@@ -1,0 +1,280 @@
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ALTER PROCEDURE [dbo].[usp_Common_SelectList_GetDataTableList_WB](
+@PageName VARCHAR(50),
+@GridName VARCHAR(50),
+@ColumnName VARCHAR(50),
+@LoginID INT,
+@CompanyID INT
+)
+AS
+ BEGIN
+	
+	/* Settings */
+	IF(@PageName = 'VehicleMaster')
+	BEGIN
+		IF(@GridName = 'IndexGrid')
+		BEGIN
+			IF(@ColumnName = 'VehicleTypeName')
+			BEGIN
+				SELECT ('0')Value, ('All')Text, (0)DisplayOrder
+				UNION ALL
+				SELECT DISTINCT (VehicleTypeID)Value, (VehicleTypeName)Text, (1)DisplayOrder
+				FROM WB_VehicleTypeMaster
+				WHERE IsActive = 1
+				ORDER BY DisplayOrder, Text
+			END
+		    ELSE IF(@ColumnName = 'Type')
+			BEGIN
+				SELECT ('All')Value, ('All')Text, (0)DisplayOrder
+				UNION ALL
+				SELECT DISTINCT (Type)Value, (Type)Text, (1)DisplayOrder
+				FROM WB_VehicleMaster
+				WHERE IsActive = 1
+				ORDER BY DisplayOrder, Text
+			END
+		END
+	END
+ END
+
+
+GO
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------
+alter PROCEDURE [dbo].[usp_WB_Settings_VehicleMaster_PopulateGrid](
+@StartRowNo INT,
+@EndRowNo INT,
+@SortColumn VARCHAR(30),
+@SortDirection VARCHAR(10),
+@VehicleCode VARCHAR(20),
+@VehicleNo VARCHAR(50),
+@DriverName VARCHAR(250),
+@DriverMobile VARCHAR(25),
+@Type VARCHAR(10),
+@VehicleTypeID INT,
+@PartyName VARCHAR(250),
+@PopulateType VARCHAR(50),
+@LoginID INT,
+@CompanyID INT
+)
+AS
+ BEGIN
+	/* Local Variable */
+	DECLARE @LocalStartRowNo INT = @StartRowNo
+	DECLARE @LocalEndRowNo INT = @EndRowNo
+	DECLARE @LocalSortColumn VARCHAR(30) = @SortColumn
+	DECLARE @LocalSortDirection VARCHAR(10) = @SortDirection
+	DECLARE @LocalVehicleCode VARCHAR(20) = @VehicleCode
+	DECLARE @LocalVehicleNo VARCHAR(150) = @VehicleNo
+	DECLARE @LocalDriverName VARCHAR(250)=ISNULL(@DriverName,'All')
+	DECLARE @LocalDriverMobile VARCHAR(250)=ISNULL(@DriverMobile,'All')
+	DECLARE @LocalVehicleTypeID INT = ISNULL(@VehicleTypeID,0)
+	DECLARE @LocalType VARCHAR(10)=ISNULL(@Type,'All')
+	--DECLARE @LocalType VARCHAR(1)=@Type
+	DECLARE @LocalPartyName VARCHAR(250)=ISNULL(@PartyName,'All')
+	DECLARE @LocalPopulateType VARCHAR(50) = @PopulateType
+	DECLARE @LocalLoginID INT = @LoginID
+	DECLARE @LocalCompanyID INT = @CompanyID
+
+	/*Select the Vehicle Data to populate in a dropdown with or without "All" depending upon need.*/
+	IF(@LocalPopulateType IN('SelectList','SelectListWithAll'))
+	BEGIN
+		SELECT (0)VehicleID, ('All')VehicleNo, (0)DisplayOrder
+		WHERE @LocalPopulateType IN('SelectListWithAll')
+		UNION ALL
+		SELECT VehicleID, VehicleNo, (1)DisplayOrder
+		FROM WB_VehicleMaster WHERE IsActive = 1
+		ORDER BY DisplayOrder, VehicleNo
+	END
+	/*Select Vehicle Data For Ticketing or those pages where Autofill by Vehicle No is required.*/
+	--ELSE IF(@LocalPopulateType IN('AutoSuggest'))
+	--BEGIN
+	--	SELECT TOP 100 VehicleID,VehicleCode,VehicleNo,VehicleTypeName,DriverName,DriverMobile,SupplierName PartyName
+	--	FROM WB_VehicleMaster
+	--	INNER JOIN WB_VehicleTypeMaster ON WB_VehicleMaster.VehicleTypeID=WB_VehicleTypeMaster.VehicleTypeID
+	--	LEFT OUTER JOIN IMS_SupplierMaster ON WB_VehicleMaster.PartyID=IMS_SupplierMaster.SupplierID
+	--	WHERE WB_VehicleMaster.IsActive = 1
+	--	AND VehicleNo LIKE '%' + ISNULL(@LocalVehicleNo,'') + '%'
+	--	ORDER BY VehicleNo
+	--END
+	ELSE
+	BEGIN
+
+		/*Select the Vehicle Detail Data for IndexGrid.*/
+		DECLARE @CanDelete BIT = ISNULL((SELECT CanDelete
+		FROM dbo.ufn_GetAccessRight(@LoginID,'WB','VehicleMaster')),0)
+		
+		;WITH results AS(SELECT TotalRecords = COUNT(*) OVER (),
+			RowID = ROW_NUMBER() OVER(ORDER BY
+			CASE WHEN @LocalSortDirection = 'asc' AND @LocalSortColumn = 'VehicleCode' THEN VehicleCode END ASC,
+			CASE WHEN @LocalSortDirection = 'asc' AND @LocalSortColumn = 'VehicleNo' THEN VehicleNo END ASC,
+			CASE WHEN @LocalSortDirection = 'asc' AND @LocalSortColumn = 'Tareweight' THEN Tareweight END ASC,
+			CASE WHEN @LocalSortDirection = 'asc' AND @LocalSortColumn = 'DriverName' THEN DriverName END ASC,
+			CASE WHEN @LocalSortDirection = 'asc' AND @LocalSortColumn = 'DriverMobile' THEN DriverMobile END ASC,
+			CASE WHEN @LocalSortDirection = 'asc' AND @LocalSortColumn = 'Type' THEN Type END ASC,
+			CASE WHEN @LocalSortDirection = 'asc' AND @LocalSortColumn = 'VehicleTypeName' THEN VehicleTypeName END ASC,
+			CASE WHEN @LocalSortDirection = 'desc' AND @LocalSortColumn = 'VehicleCode' THEN VehicleCode END DESC,
+			CASE WHEN @LocalSortDirection = 'desc' AND @LocalSortColumn = 'VehicleNo' THEN VehicleNo END DESC,
+			CASE WHEN @LocalSortDirection = 'desc' AND @LocalSortColumn = 'Tareweight' THEN Tareweight END DESC,
+			CASE WHEN @LocalSortDirection = 'desc' AND @LocalSortColumn = 'DriverName' THEN DriverName END DESC,
+			CASE WHEN @LocalSortDirection = 'desc' AND @LocalSortColumn = 'DriverMobile' THEN DriverMobile END DESC,
+			CASE WHEN @LocalSortDirection = 'desc' AND @LocalSortColumn = 'Type' THEN Type END DESC,
+			CASE WHEN @LocalSortDirection = 'desc' AND @LocalSortColumn = 'VehicleTypeName' THEN VehicleTypeName END DESC),
+			VehicleID,VehicleCode,WB_VehicleMaster.VehicleTypeID,VehicleTypeName,Type,VehicleNo,Tareweight,DriverName,
+			DriverMobile, PartyName,
+			(UserFullName)CreatedBy,(@CanDelete)CanDelete
+			FROM WB_VehicleMaster
+			INNER JOIN WB_VehicleTypeMaster ON WB_VehicleMaster.VehicleTypeID=WB_VehicleTypeMaster.VehicleTypeID
+			INNER JOIN Security_Login ON WB_VehicleMaster.CreatedBy = Security_Login.UID
+			WHERE WB_VehicleMaster.IsActive = 1
+			AND VehicleCode LIKE ISNULL(@LocalVehicleCode,VehicleCode) + '%'
+			AND VehicleNo LIKE ISNULL(@LocalVehicleNo,VehicleNo) + '%'
+			AND (@LocalDriverName = 'All' OR DriverName LIKE '%' + @LocalDriverName + '%')
+			AND (@LocalDriverMobile = 'All' OR DriverMobile LIKE '%' + @LocalDriverMobile + '%')
+			AND (@LocalVehicleTypeID = 0 OR WB_VehicleTypeMaster.VehicleTypeID = @LocalVehicleTypeID)
+			AND (@LocalPartyName = 'All' OR PartyName LIKE '%' + @LocalPartyName + '%')
+			AND (@LocalType = 'All' OR WB_VehicleMaster.Type LIKE @LocalType + '%')
+			--AND Type LIKE '%' + ISNULL(@LocalType,Type) + '%'
+			
+		)
+		SELECT * FROM results WHERE RowID BETWEEN @LocalStartRowNo AND @LocalEndRowNo
+	END
+ END
+
+
+
+GO
+
+
+
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------
+insert into Common_StatusText(ForTable,StatusID,StatusText,DisplayOrder,HexValue)
+			values('WB_Ticket',2,'Pending',2,null),
+			('WB_Ticket',1,'Completed',1,null)
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+IF(@GridName = 'IndexGrid')
+		BEGIN
+			IF(@ColumnName = 'Type')
+			BEGIN
+				SELECT ('All')Value, ('All')Text, (0)DisplayOrder
+				UNION ALL
+				SELECT DISTINCT (Type)Value, (Type)Text, (1)DisplayOrder
+				FROM WB_Ticket
+				WHERE IsCancelled = 0
+				ORDER BY DisplayOrder, Text
+			END
+			
+		END
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------
+insert into Common_PrintSettings
+values('WB','Ticket','PrintTicket',null,null,null,null,1,null,3,'106px','100px','100px',790,1,1,1,1)
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------
+CREATE PROCEDURE [dbo].[usp_WB_Transactions_Ticket_PopulateGrid](
+@StartRowNo INT,
+@EndRowNo INT,
+@SortColumn VARCHAR(50),
+@SortDirection VARCHAR(20),
+@FromDate DATE,
+@ToDate DATE,
+@TicketNo VARCHAR(20),
+@EntryType VARCHAR(10),
+@Type VARCHAR(10),
+@VehicleNo VARCHAR(50),
+@ProductName VARCHAR(500),
+@StatusID INT,
+@PopulateType VARCHAR(50),
+@LoginID INT,
+@CompanyID INT
+)
+AS
+ BEGIN
+	DECLARE @LocalStartRowNo INT = @StartRowNo
+	DECLARE @LocalEndRowNo INT = @EndRowNo
+	DECLARE @LocalSortColumn VARCHAR(50) = @SortColumn
+	DECLARE @LocalSortDirection VARCHAR(20) = @SortDirection
+	DECLARE @LocalFromDate DATE = @FromDate
+	DECLARE @LocalToDate DATE = @ToDate
+	DECLARE @LocalTicketNo VARCHAR(20) = @TicketNo
+	DECLARE @LocalVehicleNo VARCHAR(50) = @VehicleNo
+	DECLARE @LocalType VARCHAR(10)=ISNULL(@Type,'All')
+	DECLARE @LocalEntryType CHAR(1) = @EntryType
+	DECLARE @LocalProductName VARCHAR(50) = @ProductName
+	DECLARE @LocalPopulateType VARCHAR(50) = @PopulateType
+	DECLARE @LocalStatusID INT = ISNULL(@StatusID,0)
+	DECLARE @LocalLoginID INT = @LoginID
+	DECLARE @LocalCompanyID INT = @CompanyID
+
+	DECLARE @CurrentDate DATE = CAST(GETDATE() AS DATE)
+	DECLARE @DaysAllowedToCancel INT = ISNULL((SELECT DaysAllowedtoCancelTransaction FROM WB_Settings WHERE CompanyID = @CompanyID),180)
+	DECLARE @CanDelete BIT = ISNULL((SELECT CanDelete FROM dbo.ufn_GetAccessRight(@LoginID,'WB','Ticket')),0)
+	
+	BEGIN
+		SET @LocalFromDate = ISNULL(@LocalFromDate,CAST(DATEADD(MONTH,MONTH(GETDATE())-1,DATEADD(YEAR,YEAR(GETDATE())-1900,0)) AS DATE))
+		SET @LocalToDate = ISNULL(@LocalToDate,CAST(DATEADD(DAY,-1,DATEADD(MONTH,MONTH(ISNULL(@LocalFromDate,GETDATE())),DATEADD(YEAR,YEAR(ISNULL(@LocalFromDate,GETDATE()))-1900,0))) AS DATE))
+	END
+
+	BEGIN
+		;WITH results AS(SELECT TotalRecords = COUNT(*) OVER (),
+			RowID = ROW_NUMBER() OVER(ORDER BY
+			CASE WHEN @LocalSortDirection = 'asc' AND @LocalSortColumn = 'TicketNo' THEN TicketNo END ASC,
+			CASE WHEN @LocalSortDirection = 'asc' AND @LocalSortColumn = 'dtTicketDate' THEN TicketDateTime END ASC,
+			CASE WHEN @LocalSortDirection = 'asc' AND @LocalSortColumn = 'EntryType' THEN EntryType END ASC,
+			CASE WHEN @LocalSortDirection = 'asc' AND @LocalSortColumn = 'Type' THEN WB_Ticket.Type END ASC,
+			CASE WHEN @LocalSortDirection = 'asc' AND @LocalSortColumn = 'VehicleNo' THEN VehicleNo END ASC,
+			CASE WHEN @LocalSortDirection = 'asc' AND @LocalSortColumn = 'StatusText' THEN StatusText END ASC,
+			CASE WHEN @LocalSortDirection = 'desc' AND @LocalSortColumn = 'TicketNo' THEN TicketNo END DESC,
+			CASE WHEN @LocalSortDirection = 'desc' AND @LocalSortColumn = 'dtTicketDate' THEN TicketDateTime END DESC,
+			CASE WHEN @LocalSortDirection = 'desc' AND @LocalSortColumn = 'EntryType' THEN EntryType END DESC,
+			CASE WHEN @LocalSortDirection = 'desc' AND @LocalSortColumn = 'Type' THEN WB_Ticket.Type END DESC,
+			CASE WHEN @LocalSortDirection = 'desc' AND @LocalSortColumn = 'VehicleNo' THEN VehicleNo END DESC,
+			CASE WHEN @LocalSortDirection = 'desc' AND @LocalSortColumn = 'StatusText' THEN StatusText END DESC),
+			 TicketID,TicketNo,TicketDate,EntryType,WB_Ticket.Type,VehicleNo,Grossweight,GrossweightDateTime,WB_Ticket.Tareweight,
+			TareweightDateTime,Netweight,CancellationReason,StatusText,HexValue,
+			(CASE WHEN WB_Ticket.StatusID IN(2) THEN 0 ELSE 1 END)CanPrint,
+			(CASE WHEN @CanDelete = 1 AND WB_Ticket.StatusID IN(1) AND DATEDIFF(DD,TicketDate,@CurrentDate) <= @DaysAllowedToCancel THEN 1 ELSE 0 END)CanDelete
+			FROM WB_Ticket
+			INNER JOIN WB_VehicleMaster ON WB_Ticket.VehicleID=WB_VehicleMaster.VehicleID
+			INNER JOIN IMS_ProductMaster ON WB_Ticket.ProductID = IMS_ProductMaster.ProductID
+			INNER JOIN Common_StatusText ON WB_Ticket.StatusID = Common_StatusText.StatusID AND ForTable = 'WB_Ticket'
+			WHERE TicketNo LIKE ISNULL(@LocalTicketNo,TicketNo) + '%'
+			AND TicketDate BETWEEN ISNULL(@LocalFromDate,TicketDate) AND ISNULL(@LocalToDate,TicketDate)
+			AND (@LocalType = 'All' OR WB_VehicleMaster.Type LIKE @LocalType + '%')
+			AND VehicleNo LIKE ISNULL(@LocalVehicleNo,VehicleNo) + '%'
+			AND (@LocalStatusID = 0 OR WB_Ticket.StatusID = @LocalStatusID)
+		)
+		SELECT * FROM results WHERE RowID BETWEEN @LocalStartRowNo AND @LocalEndRowNo
+	END
+
+
+ END
+
+
+
+
+
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+
+
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------
+

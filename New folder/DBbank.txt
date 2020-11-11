@@ -1,0 +1,248 @@
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+SET ANSI_PADDING ON
+GO
+
+CREATE TABLE [dbo].[Admin_BankMaster](
+	[BankID] [int] IDENTITY(1,1) NOT NULL,
+	[BankCode] [varchar](20) NOT NULL,
+	[BankName] [varchar](150) NOT NULL,
+	[IsActive] [bit] NOT NULL,
+	[CreatedBy] [smallint] NOT NULL,
+	[CompanyID] [tinyint] NOT NULL,
+ CONSTRAINT [PK_Admin_BankMaster] PRIMARY KEY CLUSTERED 
+(
+	[BankID] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY],
+ CONSTRAINT [UK_Code_Admin_BankMaster] UNIQUE NONCLUSTERED 
+(
+	[CompanyID] ASC,
+	[BankCode] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
+) ON [PRIMARY]
+
+GO
+
+SET ANSI_PADDING OFF
+GO
+
+====================================add==
+
+CREATE PROCEDURE [dbo].[usp_Admin_Settings_BankMaster_Add](
+@BankName VARCHAR(100),
+@SessionLogID INT,
+@LoginID INT,
+@CompanyID INT,
+@ReturnMessage VARCHAR(50) OUTPUT
+)
+AS
+ BEGIN
+	IF NOT EXISTS(SELECT * FROM Admin_BankMaster WHERE BankName = @BankName AND IsActive = 1 AND CompanyID = @CompanyID)
+	BEGIN
+		DECLARE @BankCode VARCHAR(20)
+		EXEC usp_Admin_Settings_BankMaster_PopulateCode @CompanyID, @BankCode OUT
+		
+		INSERT INTO Admin_BankMaster(BankCode,BankName,IsActive,CreatedBy,CompanyID)                                  
+		VALUES(@BankCode,@BankName,1,@LoginID,@CompanyID)            
+		
+		DECLARE @BankID INT = SCOPE_IDENTITY()
+		
+		/*Insert Into Data Log*/
+		INSERT INTO Log_DataLog(LogDateTime,SessionLogID,ActionType,TableName,PKID)
+		VALUES(GETDATE(),@SessionLogID,1,'Admin_BankMaster',@BankID)
+		
+		SET @ReturnMessage = 'Saved'
+	END
+	ELSE
+	BEGIN
+		SET @ReturnMessage = 'Exists'
+	END
+ END
+
+
+GO
+=======delete=========
+
+CREATE PROCEDURE [dbo].[usp_Admin_Settings_BankMaster_Delete](
+@BankID INT,
+@SessionLogID INT,
+@CompanyID INT,
+@ReturnMessage VARCHAR(50) OUTPUT
+)
+AS
+ BEGIN
+	IF EXISTS(SELECT * FROM Admin_BankMaster WHERE BankID = @BankID AND CompanyID = @CompanyID)
+	BEGIN
+		UPDATE Admin_BankMaster
+		SET IsActive = 0
+		WHERE BankID = @BankID
+	
+		/*Insert Into Data Log*/
+		INSERT INTO Log_DataLog(LogDateTime,SessionLogID,ActionType,TableName,PKID)
+		VALUES(GETDATE(),@SessionLogID,4,'Admin_BankMaster',@BankID)
+
+		SET @ReturnMessage = 'Deleted'
+	END
+	ELSE
+	BEGIN
+		SET @ReturnMessage = 'NotExists'
+	END
+ END
+
+
+GO
+
+=========================getdet=============
+
+CREATE PROCEDURE [dbo].[usp_Admin_Settings_BankMaster_GetDetails](
+@BankID INT,
+@LoginID INT,
+@CompanyID INT
+)
+AS
+ BEGIN
+	SELECT BankID,BankCode,BankName,
+	ISNULL((SELECT CanUpdate FROM dbo.ufn_GetAccessRight(@LoginID,'Admin','BankMaster')),0)CanUpdate
+	FROM Admin_BankMaster
+	WHERE IsActive = 1 AND BankID = @BankID
+ END
+
+
+
+GO
+=================================papulatecode=============
+
+
+CREATE PROCEDURE [dbo].[usp_Admin_Settings_BankMaster_PopulateCode](  
+@CompanyID [int],
+@BankCode varchar(20) OUT
+)
+AS
+ BEGIN
+	DECLARE @MaxNo INT
+	DECLARE @vMaxNo VARCHAR(20)
+	IF NOT EXISTS(SELECT * FROM Admin_BankMaster WHERE CompanyID = @CompanyID)
+	BEGIN
+		SET @BankCode = 'B001'
+	END
+	ELSE
+	BEGIN
+		SET @MaxNo = (SELECT MAX(CAST(SUBSTRING(BankCode,2,10) AS INT)) FROM Admin_BankMaster WHERE CompanyID = @CompanyID)
+		SET @MaxNo = @MaxNo + 1
+		SET @vMaxNo = CAST(@MaxNo AS VARCHAR(15))
+		IF(LEN(@vMaxNo) = 1)
+		BEGIN
+			SET @vMaxNo = '00' + @vMaxNo
+		END
+		ELSE IF(LEN(@vMaxNo) = 2)
+		BEGIN
+			SET @vMaxNo = '0' + @vMaxNo
+		END
+		SET @BankCode = 'B' + @vMaxNo
+	END
+ END
+
+
+GO
+
+
+====================grid
+
+CREATE PROCEDURE [dbo].[usp_Admin_Settings_BankMaster_PopulateGrid](
+@StartRowNo INT,
+@EndRowNo INT,
+@SortColumn VARCHAR(30),
+@SortDirection VARCHAR(10),
+@BankCode VARCHAR(50),
+@BankName VARCHAR(250),
+@PopulateType VARCHAR(50),
+@LoginID INT,
+@CompanyID INT
+)
+AS
+ BEGIN
+	/* Local Variable */
+	DECLARE @LocalStartRowNo INT = @StartRowNo
+	DECLARE @LocalEndRowNo INT = @EndRowNo
+	DECLARE @LocalSortColumn VARCHAR(30) = @SortColumn
+	DECLARE @LocalSortDirection VARCHAR(10) = @SortDirection
+	DECLARE @LocalBankCode VARCHAR(50) = @BankCode
+	DECLARE @LocalBankName VARCHAR(250) = @BankName
+    DECLARE @LocalPopulateType VARCHAR(100) = @PopulateType
+	DECLARE @LocalLoginID INT = @LoginID
+	DECLARE @LocalCompanyID INT = @CompanyID
+
+	IF(@LocalPopulateType IN('SelectList','SelectListWithAll'))
+	BEGIN
+		SELECT (0)BankID, ('All')BankName, (0)DisplayOrder
+		WHERE @LocalPopulateType IN('SelectListWithAll')
+		UNION ALL
+		SELECT BankID, BankName, (1)DisplayOrder
+		FROM Admin_BankMaster WHERE IsActive = 1
+		ORDER BY DisplayOrder, BankName
+	END
+	ELSE
+	BEGIN
+		DECLARE @CanDelete BIT = ISNULL((SELECT CanDelete
+		FROM dbo.ufn_GetAccessRight(@LoginID,'Admin','BankMaster')),0)
+		
+		;WITH results AS(SELECT TotalRecords = COUNT(*) OVER (),
+			RowID = ROW_NUMBER() OVER(ORDER BY
+			CASE WHEN @SortDirection = 'asc' AND @SortColumn = 'BankCode' THEN BankCode END ASC,
+			CASE WHEN @SortDirection = 'asc' AND @SortColumn = 'BankName' THEN BankName END ASC,
+			CASE WHEN @SortDirection = 'desc' AND @SortColumn = 'BankCode' THEN BankCode END DESC,
+			CASE WHEN @SortDirection = 'desc' AND @SortColumn = 'BankName' THEN BankName END DESC),
+			BankID,BankCode,BankName,(UserFullName)CreatedBy,(@CanDelete)CanDelete
+			FROM Admin_BankMaster
+			INNER JOIN Security_Login ON Admin_BankMaster.CreatedBy = Security_Login.UID
+			WHERE Admin_BankMaster.IsActive = 1
+			AND BankCode LIKE ISNULL(@LocalBankCode,BankCode) + '%'
+			AND BankName LIKE '%' + ISNULL(@LocalBankName,BankName) + '%'
+		)
+		SELECT * FROM results WHERE RowID BETWEEN @LocalStartRowNo AND @LocalEndRowNo
+	END
+ END
+
+
+GO
+
+
+============================================update
+
+
+CREATE PROCEDURE [dbo].[usp_Admin_Settings_BankMaster_Update](
+@BankID INT,
+@BankName VARCHAR(150),
+@SessionLogID INT,
+@CompanyID INT,
+@ReturnMessage VARCHAR(50) OUTPUT
+)
+AS
+ BEGIN
+	IF NOT EXISTS(SELECT * FROM Admin_BankMaster WHERE BankID <> @BankID
+	AND BankName = @BankName AND IsActive = 1 AND CompanyID = @CompanyID)
+	BEGIN
+		UPDATE Admin_BankMaster
+		SET BankName = @BankName
+		WHERE BankID = @BankID
+		
+		/*Insert Into Data Log*/
+		INSERT INTO Log_DataLog(LogDateTime,SessionLogID,ActionType,TableName,PKID)
+		VALUES(GETDATE(),@SessionLogID,3,'Admin_BankMaster',@BankID)
+		
+		SET @ReturnMessage = 'Updated'
+	END
+	ELSE
+	BEGIN
+		SET @ReturnMessage = 'Exists'
+	END	
+ END
+
+
+GO
+
+

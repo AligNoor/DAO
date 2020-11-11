@@ -1,0 +1,116 @@
+	DECLARE @Product_Name varchar(50),@Generic_Name varchar(50),@Category_Name varchar(50),@Manufacture_Name varchar(50),
+	@UOM_Name varchar(50),@ProductId int,@GenericID int,@CategoryId int,@ManufactureId int,@UOMId int
+
+	if(@GenericID is null)
+	Begin
+	insert into Noor_GenericMaster(GenericName) select (case when GenericName = null then '' else GenericName end)  from Noor_ProductList
+	SELECT @GenericID = Scope_Identity()
+	end
+	if(@CategoryId is null)
+	Begin
+	insert into Noor_CategoryMaster select CategoryName from Noor_ProductList
+	SELECT @CategoryId = Scope_Identity()
+	end
+	if(@ManufactureId is null)
+	Begin
+	insert into Noor_ManufacturerMaster(ManufacturerName) select (case when ManufacturerName = null then '' else ManufacturerName end)  from Noor_ProductList
+	SELECT @ManufactureId = Scope_Identity()
+	end
+	if(@UOMId is null)
+	Begin
+	insert into Noor_UOMMaster select UOMName from Noor_ProductList
+	SELECT @UOMId = Scope_Identity()
+	end
+	INSERT INTO Noor_ProductMaster (ProductName,GenericID,CategoryID,ManufaturerID,UOMID)
+	values ((case when ProductName = null then '' else ManufacturerName end from Noor_ProductList)  ,@GenericId,@CategoryId,@ManufactureId,@UOMId)
+	SELECT @ProductId = Scope_Identity()  
+	insert into Noor_ProductMaster select ProductName,GenericID,CategoryID,ManufacturerID,UOMID from Noor_ProductList
+	inner join Noor_GenericMaster on Noor_ProductList.GenericName =Noor_GenericMaster.GenericName
+	inner join Noor_CategoryMaster on Noor_ProductList.CategoryName =Noor_CategoryMaster.CategoryName
+	inner join Noor_ManufacturerMaster on Noor_ProductList.ManufacturerName =Noor_ManufacturerMaster.ManufacturerName
+	inner join Noor_UOMMaster on Noor_ProductList.UOMName =Noor_UOMMaster.UOMName
+	SELECT @ProductId = Scope_Identity()  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+------------------------------------
+
+
+	DECLARE @Product_Name varchar(50),@Generic_Name varchar(50),@Category_Name varchar(50),@Manufacture_Name varchar(50),
+	@UOM_Name varchar(50),@ProductId int,@GenericId int,@CategoryId int,@ManufactureId int,@UOMId int
+
+	DECLARE MultiplTable CURSOR FOR
+	SELECT ProductName,GenericName,CategoryName,ManufacturerName,UOMName from Noor_ProductList
+
+	open MultiplTable
+	fetch next from MultiplTable into
+	@Product_Name,@Generic_Name,@Category_Name,@Manufacture_Name,@UOM_Name --declare these!
+
+	while @@fetch_status = 0
+	BEGIN
+
+	insert into Noor_GenericMaster select GenericName from Noor_ProductList
+	--INSERT INTO Noor_GenericMaster(GenericName) VALUES (@Generic_Name) 
+	SELECT @GenericId = Scope_Identity()
+
+	insert into Noor_CategoryMaster select CategoryName from Noor_ProductList
+	SELECT @CategoryId = Scope_Identity()
+
+	insert into Noor_ManufaturerMaster select ManufacturerName from Noor_ProductList
+	--INSERT INTO Noor_ManufaturerMaster(ManufacturerName) VALUES (@Manufacture_Name) 
+	SELECT @ManufactureId = Scope_Identity()
+
+	insert into Noor_UOMMaster select UOMName from Noor_ProductList
+	--INSERT INTO Noor_UOMMaster(UOMName) VALUES (@UOM_Name)
+	SELECT @UOMId = Scope_Identity()
+
+	INSERT INTO Noor_ProductMaster (ProductName,GenericID,CategoryID,ManufaturerID,UOMID)
+	values (@Product_Name,@GenericId,@CategoryId,@ManufactureId,@UOMId)
+	SELECT @ProductId = Scope_Identity()  
+
+	--fetch next from MultiplTable into @Product_Name,@Generic_Name,@Category_Name,@Manufacture_Name,@UOM_Name
+
+	END
+	close MultiplTable
+	deallocate MultiplTable
+
+
+
+------------------------------------------------------------
+
+select * from Noor_ProductList
+
+truncate table Noor_ProductMaster
+truncate table Noor_GenericMaster
+truncate table Noor_CategoryMaster
+truncate table Noor_ManufacturerMaster
+truncate table Noor_UOMMaster
+---Noor_ProductMaster [ProductID,ProductName,GenericID,CategoryID,ManufaturerID,UOMID]
+--Noor_GenericMaster [GenericID,GenericName]
+--Noor_CategoryMaster [CategoryID, CategoryName]
+--Noor_ManufaturerMaster [ManufaturerID,delete ManufaturerName]
+--Noor_UOMMaster [UOMID, UOMName]
+select *  from Noor_ProductMaster
+select * from Noor_GenericMaster
+select *  from Noor_CategoryMaster
+select *  from Noor_ManufacturerMaster
+select *  from Noor_UOMMaster
+select ProductName,GenericID,CategoryID,ManufacturerID,UOMID from Noor_ProductList
+	inner join Noor_GenericMaster on Noor_ProductList.GenericName =Noor_GenericMaster.GenericName
+	inner join Noor_CategoryMaster on Noor_ProductList.CategoryName =Noor_CategoryMaster.CategoryName
+	inner join Noor_ManufacturerMaster on Noor_ProductList.ManufacturerName =Noor_ManufacturerMaster.ManufacturerName
+	inner join Noor_UOMMaster on Noor_ProductList.UOMName =Noor_UOMMaster.UOMName

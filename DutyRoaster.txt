@@ -1,0 +1,48 @@
+-========================================================================================================================
+ALTER PROCEDURE [dbo].[usp_PR_Transactions_DutyRoaster_GetEmployeeDetails](
+@SearchBy INT,
+@SearchValue VARCHAR(100),
+@LoginID INT,
+@CompanyID INT
+)
+AS
+ BEGIN
+	
+	SELECT EmployeeCode,EmployeeName ,DepartmentName,DesignationName,MobileNo
+	FROM Admin_EmployeeDetails 
+	INNER JOIN Admin_DepartmentMaster on  Admin_EmployeeDetails.DepartmentID= Admin_DepartmentMaster.DepartmentID
+	INNER JOIN Admin_DesignationMaster on  Admin_EmployeeDetails.DesignationID= Admin_DesignationMaster.DesignationID   
+	WHERE EmployeeTypeID=@SearchBy
+	
+ END
+
+-========================================================================================================================
+CREATE TABLE [dbo].[PR_DutyRoster](
+	[DutyRosterID] [int] IDENTITY(1,1) NOT NULL,
+	[DutyRosterDate] [date] NOT NULL,
+	[EmployeeID] [int] NOT NULL,
+	[ShiftID] [int] NOT NULL,
+	[LocationID] [int] NULL,
+	[IsDeleted] [bit] NOT NULL,
+	[CreatedBy] [int] NOT NULL,
+	[CreatedDateTime] [datetime2](2) NOT NULL,
+	[ModifiedBy] [int] NULL,
+	[ModifiedDateTime] [datetime2](2) NULL,
+	[CompanyID] [tinyint] NOT NULL,
+ CONSTRAINT [PK_PR_DutyRoster] PRIMARY KEY CLUSTERED 
+(
+	[DutyRosterID] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
+) ON [PRIMARY]
+
+GO
+
+-========================================================================================================================
+-========================================================================================================================
+-========================================================================================================================
+-========================================================================================================================
+-========================================================================================================================
+-========================================================================================================================
+
+
+

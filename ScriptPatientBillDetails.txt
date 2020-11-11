@@ -1,0 +1,40 @@
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+CREATE PROCEDURE [dbo].[usp_BMS_Transactions_PatientBillDetails_GetPatientBillDetails](
+@ServiceInvoiceNo Varchar(250),
+@LoginID INT,
+@CompanyID INT
+)
+AS
+ BEGIN
+	select ServiceInvoiceID,ServiceInvoiceNo,dbo.FormatDate(RegistrationDateTime,'DD-MM-YYYY')ServiceInvoiceDate,PatientName from BMS_ServiceInvoice
+	Inner Join  PMS_RegistrationDetails ON BMS_ServiceInvoice.RegistrationID = PMS_RegistrationDetails.RegistrationID
+	Inner Join  PMS_PatientDetails ON PMS_RegistrationDetails.PID = PMS_PatientDetails.PID
+	WHERE ServiceInvoiceNo LIKE @ServiceInvoiceNo + '%' ORDER BY ServiceInvoiceID DESC
+	
+ END
+
+-=======================================================================================================================
+CREATE PROCEDURE [dbo].[usp_BMS_Transactions_PatientBillDetails_GetBillingDetails](
+@ServiceInvoiceID INT,
+@BillNo VARCHAR(20),
+@CompanyID INT
+)
+AS
+ BEGIN
+	
+	SELECT ServiceInvoiceID,BMS_ServiceInvoice.RegistrationID,BillingSection,dbo.FormatDate(ServiceInvoiceDateTime,'DD-MM-YYYY HH:MI TT')ServiceInvoiceDate,SubTotalAmount,
+	ServiceInvoiceNo,PMS_RegistrationDetails.PlanID,DeliveryBy,isnull(BMS_ServiceInvoice.HospitalID,'')HospitalID,HospitalName,HospitalRegistrationNo,BMS_ServiceInvoice.ReferredByID,ReferredByName,
+	Prefix,PatientName,Age,AgeVal,Sex,Address1,City,PMS_PatientDetails.MobileNo,PMS_PatientDetails.EMailID
+	FROM PMS_RegistrationDetails
+	INNER JOIN PMS_PatientDetails ON PMS_RegistrationDetails.PID = PMS_PatientDetails.PID
+	INNER JOIN BMS_ServiceInvoice ON PMS_RegistrationDetails.RegistrationID = BMS_ServiceInvoice.RegistrationID
+	LEFT OUTER JOIN	Admin_ReferringHospitalMaster ON BMS_ServiceInvoice.HospitalID = Admin_ReferringHospitalMaster.HospitalID
+	LEFT OUTER JOIN	Admin_ReferredByRegistration ON BMS_ServiceInvoice.ReferredByID = Admin_ReferredByRegistration.ReferredByID	
+	WHERE BMS_ServiceInvoice.ServiceInvoiceID = @ServiceInvoiceID and ServiceInvoiceNo=@BillNo
+ END
+
+
+
+
+-=======================================================================================================================

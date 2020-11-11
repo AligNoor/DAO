@@ -1,0 +1,1235 @@
+@model QuraERP.Entity.Admin.BankMaster
+
+@{
+    ViewBag.Title = "Bank Master";
+    Layout = "~/Views/Shared/_LayoutV3.cshtml";
+}
+
+<div class="breadcrumbs">
+    <div class="btntopheader">
+        <a href="@Url.Action("Index", "BankMaster", new { area = "Admin" })"><i class="fa fa-arrow-circle-left"></i>&nbsp;Back</a>
+    </div>
+    <ul>
+        <li><a>Administration</a><i class="fa fa-angle-right"></i></li>
+        <li><a>Settings</a><i class="fa fa-angle-right"></i></li>
+        <li><a>Bank Master</a></li>
+    </ul>
+</div>
+<div class="col-sm-12 box box-bordered nopadding">
+     <div class="box-content nopadding">
+    @using (Html.BeginForm((string)ViewBag.Action, "BankMaster", new { area = "Admin" }, FormMethod.Post, new { id = "frmMain", @class = "form-validate",autocomplete="off" }))
+            {
+        @Html.HiddenFor(m => m.BankID)
+        @Html.HiddenFor(m => m.CanUpdate)
+        <div id="divMainContent" class="col-sm-12 nopadding div-grey" style="overflow-y:auto;margin-bottom:1px;">
+            <div class="col-sm-4 nopadding">
+
+            </div>
+            <div class="box box-bordered box-color col-sm-4 nopadding">
+                <div class="box-content nopadding" style="border-top-width: 1px; border-top-style: solid; margin-top:1px;">
+                    <div class="form-horizontal form-column form-bordered">
+                        <div class="col-sm-12 nopadding no-border-left">
+                            <div class="form-group">
+                                @Html.LabelFor(m => m.BankCode, new { @class = "control-label right col-sm-3" })
+                                <div class="col-sm-9">
+                                    <span class="form-control input-sm font-bold">
+                                        @if (ViewBag.Action == "Create")
+                                        {
+                                            @:New
+                                            }
+                                        else
+                                        {
+                                            @Html.HiddenFor(m => m.BankCode)
+                                            @Html.DisplayFor(m => m.BankCode)
+                                        }
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                            <div class="col-sm-12 nopadding no-border-left">
+                                <div class="form-group required">
+                                    @Html.LabelFor(m => m.BankName, new { @class = "control-label right col-sm-3" })
+                                    <div class="col-sm-9">
+                                        @Html.TextBoxFor(m => m.BankName, null, new { placeholder = "Bank Name", @class = "form-control input-sm font-bold" })
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-sm-4 nopadding">
+
+                </div>
+                <div class="col-sm-12 nopadding div-grey">
+                    @if (TempData["ErrorMessage"] != null)
+                    {
+                        <div class="alert alert-danger alert-dismissable">
+                            <button type="button" class="close" data-dismiss="alert"><i class="fa fa-times-circle-o"></i></button>
+                            <strong>Error!</strong>&nbsp;&nbsp;&nbsp;@Html.Raw(TempData["ErrorMessage"])
+                        </div>
+                    }
+                    @if (TempData["WarningMessage"] != null)
+                    {
+                        <div class="alert alert-warning alert-dismissable">
+                            <button type="button" class="close" data-dismiss="alert"><i class="fa fa-times-circle-o"></i></button>
+                            <strong>Warning!</strong>&nbsp;&nbsp;&nbsp;@Html.Raw(TempData["WarningMessage"])
+                        </div>
+                    }
+                    @if (TempData["SuccessMessage"] != null)
+                    {
+                        <div class="alert alert-success alert-dismissable">
+                            <button type="button" class="close" data-dismiss="alert"><i class="fa fa-times-circle-o"></i></button>
+                            <strong>Success!</strong>&nbsp;&nbsp;&nbsp;@Html.Raw(TempData["SuccessMessage"])
+                        </div>
+                    }
+                </div>
+            </div>
+            <div class="col-sm-12 box box-bordered box-color nopadding">
+                <div class="box-content nopadding" style="border-top-width: 1px; border-top-style: solid;">
+                    <div class='form-horizontal form-column form-bordered'>
+                        <div class="col-sm-12 nopadding">
+                            <div class="form-group">
+                                <div class="col-sm-5 div-grey" style="height:28px;">
+
+                                </div>
+                                <div class="col-sm-1">
+                                    <input type="submit" value="@ViewBag.Update" id="btnMainSubmit" class="btn btn-primary btn-small form-control input-sm" />
+                                </div>
+                                @if (ViewBag.Action == "Create")
+                                {
+                                    <div class="col-sm-1">
+                                        <input type="button" value="Reset" id="btnCreateReset" class="btn btn-primary btn-small form-control input-sm" />
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="col-sm-1">
+                                        <input type="button" value="Back to List" id="btnBackToList" class="btn btn-primary btn-small form-control input-sm" />
+                                    </div>
+                                }
+                                <div class="col-sm-5 div-grey" style="height:28px;">
+
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            }
+        </div>
+  </div>
+            <div id="ControllerUrl" data-request-url="@Url.Action("ActionName", "BankMaster", new { area = "Admin" })"></div>
+
+            @section scripts{
+                @Scripts.Render("~/Scripts/Admin/BankMaster")
+                <script type="text/javascript">
+                    $(document).ready(function () {
+                        OnCreatePageLoad('@ViewBag.Action');
+                    });
+                </script>
+            }
+
+
+============================index====
+@{
+    ViewBag.Title = "Bank Master";
+
+    Layout = "~/Views/Shared/_LayoutV3.cshtml";
+}
+<div class="breadcrumbs">
+    <div class="btntopheader">
+        <a href="@Url.Action("Create", "BankMaster", new { area = "Admin" })"><i class="fa fa-plus-circle fa-fw">
+        </i>&nbsp;Add Bank</a>
+    </div>
+    <ul>
+        <li><a>Administration</a><i class="fa fa-angle-right"></i></li>
+        <li><a>Settings</a><i class="fa fa-angle-right"></i></li>
+        <li><a>Bank Master</a></li>
+    </ul>
+</div>
+<div class="col-sm-12 box box-bordered nopadding">        
+    @if (TempData["ErrorMessage"] != null)
+    {
+        <div class="alert alert-danger alert-dismissable">
+            <button type="button" class="close btn-close-auto" data-dismiss="alert"><i class="fa fa-times-circle-o"></i></button>
+			<strong>Error!&nbsp;</strong>&nbsp;@Html.Raw(TempData["ErrorMessage"])
+        </div>
+    }        
+    @if (TempData["WarningMessage"] != null)
+    {
+        <div class="alert alert-warning alert-dismissable">
+            <button type="button" class="close btn-close-auto" data-dismiss="alert"><i class="fa fa-times-circle-o"></i></button>
+			<strong>Warning!&nbsp;</strong>&nbsp;@Html.Raw(TempData["WarningMessage"])
+        </div>
+    }
+    @if (TempData["SuccessMessage"] != null)
+    {
+        <div class="alert alert-success alert-dismissable">
+            <button type="button" class="close btn-close-auto" data-dismiss="alert"><i class="fa fa-times-circle-o"></i></button>
+			<strong>Success!&nbsp;</strong>&nbsp;@Html.Raw(TempData["SuccessMessage"])
+        </div>
+    }
+</div>
+<div class="col-sm-12 nopadding">
+    <div class="box box-bordered nopadding">
+        <div class="box-content nopadding">
+            <table id="Admin-BankMaster-IndexGrid" class="table table-hover table-nomargin table-bordered table-striped table-condensed dataTable dataTable-scroller dataTable-column_filter"
+                data-column_filter_types="null,null,text,text,null,null">
+                <thead>
+                    <tr>
+                        <th>SN</th>
+                        <th>BankID</th>
+                        <th>Code</th>
+                        <th>Bank Name</th>
+                        <th>Created By</th>
+                        <th></th>
+                     </tr>
+                </thead>
+            </table>
+        </div>
+    </div>
+</div>
+<div id="ControllerUrl" data-request-url = "@Url.Action("ActionName", "BankMaster", new { area = "Admin" })"></div>
+
+@section scripts{
+    @Scripts.Render("~/Scripts/Admin/BankMaster")
+    <script type="text/javascript">
+    $(document).ready(function () {
+        OnIndexPageLoad();
+    });
+    </script>
+}
+===========================js=====
+var IsSubmitted = false;
+var IsPopupOpen = false;
+var IndexGrid = parseInt('186');
+
+function OnIndexPageLoad() {
+    $('#Admin-BankMaster-IndexGrid').dataTable({
+        "dom": '<"top"<"clear">><rt><"bottom"<"col-sm-4 nopadding"l><"col-sm-4 nopadding text-center"i><"col-sm-4 nopadding"p><"clear">>',
+        "aLengthMenu": [25, 50, 100, 200, 500],
+        "pageLength": 25,
+        "serverSide": true,
+        "processing": true,
+        "stateSave": true,
+        "stateDuration": stateDurationTime,
+        "pagingType": "input",
+        "ajax": {
+            url: GenerateControllerActionUrl('PopulateGrid'),
+            type: "POST",
+            "dataSrc": function (response) {
+                if (response.ReturnMessage) {
+                    if (response.ReturnMessage !== "Success") {
+                        ShowToastNotification({
+                            type: 'error',
+                            title: response.ReturnMessage
+                        });
+                    }
+                }
+                return response.data;
+            },
+            error: AjaxFunctionError,
+            complete: function () {
+                $("#Admin-BankMaster-IndexGrid").dataTable().fnProcessingIndicator(false);
+            }
+        },
+        "destroy": true,
+        "language": {
+            "infoFiltered": "",
+            "processing": ""
+        },
+        "sScrollY": $(window).height() - IndexGrid,
+        "order": [[3, "asc"]],
+        "columns": [
+                { "data": "RowID", "orderable": false, width: "3%" },
+                { "data": "BankID", "visible": false, "orderable": false },
+                {"data": "BankCode", "title": "Code", "sClass": "font-bold", width: "10%",
+                    mRender: function (data, type, row) {
+                        return '<span style="color:blue;cursor:pointer;" title="Click to Open Details" onclick="EditDetails(' + "'" + row.BankID + "'" + ');">' + data + '</span>'
+                    }
+                },
+                { "data": "BankName" },
+                { "data": "CreatedBy", "width": "15%", "orderable": false },
+                { "data": "CanDelete", "orderable": false, "width": "1%",
+                    mRender: function (data, type, row) {
+                        if (row.CanDelete == true) {
+                            return '<i class="ui-tooltip fa fa-trash-o" style="font-size:20px; cursor:pointer; color:#ff0101;" title="Click to Delete" onclick="DeleteData(' + "'" + row.BankID + "','" + row.BankName + "'" + ');"></i>'
+                        }
+                        else {
+                            return ''
+                        }
+                    }
+                }
+        ],
+        "fnInitComplete": function () {
+            DataTableFilterValue('Admin-BankMaster-IndexGrid', this.api());
+        }
+    });
+
+    $(".close").click(function (e) {
+        $('#Admin-BankMaster-IndexGrid').dataTable().fnDraw();
+    });
+
+    $(document).on("keydown", function (e) {
+        if (e.which === 113) { //For F2
+            e.preventDefault();
+            window.location.href = GenerateControllerActionUrl('Create');
+        }
+    });
+}
+
+function EditDetails(BankID) {
+    window.location.href = GenerateControllerActionUrl('EditDetails') + "?BankID=" + BankID;
+}
+
+function DeleteData(BankID, BankName) {
+    if (IsPopupOpen == false) {
+        IsPopupOpen = true;
+
+        ShowConfirmationAlert({
+            message: 'Do you really want to delete the <b>"' + BankName + '"</b>? This action cannot be undone.',
+            callback: function (result) {
+                if (result.value) {
+                    showLoader();
+                    setTimeout(function () { DeleteRecord(BankID); }, 1);
+                }
+                else {
+                    IsPopupOpen = false;
+                }
+            }
+        });
+    }
+}
+
+function DeleteRecord(BankID) {
+    try {
+        var modelData = {
+            BankID: BankID
+        };
+        $.ajax({
+            url: GenerateControllerActionUrl('Delete'),
+            type: "POST",
+            dataType: "json",
+            contentType: 'application/json',
+            async: false,
+            cache: false,
+            data: JSON.stringify(modelData),
+            async: false,
+            cache: false,
+            dataType: "json",
+            success: function (result) {
+                if (result == 'Deleted') {
+                    $('#Admin-BankMaster-IndexGrid').dataTable().fnDraw();
+
+                    ShowAlertNotification({
+                        type: 'success',
+                        title: 'Success Message',
+                        message: 'Bank Successfully Deleted.',
+                        timer: 6000
+                    });
+                }
+                else if (result == "NotExists") {
+                    ShowAlertNotification({
+                        type: 'warning',
+                        title: 'Warning Message',
+                        message: 'BankID does not exists in the system.'
+                    });
+                }
+                else if (result == "ModelInvalid") {
+                    ShowAlertNotification({
+                        type: 'warning',
+                        title: 'Warning Message',
+                        message: 'BankID is required to delete. Please try again.<br\>If the problem persists then please contact the system administrator.'
+                    });
+                }
+                else {
+                    ShowAlertNotification({
+                        type: 'error',
+                        title: 'Server Error',
+                        message: result
+                    });
+                }
+            },
+            error: AjaxFunctionError
+        });
+    }
+    catch (err) {
+        ShowAlertNotification({
+            type: 'error',
+            title: 'Javascript Exception',
+            message: err.message
+        });
+        console.log('%cFunction Name		: ' + arguments.callee.name + '\nError Descriptions	: ' + err, "color: blue; font-weight: bold;");
+    }
+    finally {
+        closeLoader();
+        IsPopupOpen = false;
+    }
+}
+
+function OnCreatePageLoad(PageMode) {
+    /* Main Click Events */
+    $("#btnMainSubmit").click(function (e) {
+        e.preventDefault();
+        if (!IsPopupOpen && IsSubmitted == false && !($("#btnMainSubmit").is(':disabled'))) {
+            IsSubmitted = true;
+
+            showLoader();
+            if ($("#btnMainSubmit").is(':focus')) {
+                setTimeout(function () { SubmitForm(PageMode); }, 1);
+            }
+            else {
+                $("#btnMainSubmit").focus();
+                setTimeout(function () { SubmitForm(PageMode); }, 10);
+            }
+        }
+        return false;
+    });
+
+    $("#btnCreateReset, #btnBackToList").click(function (e) {
+        e.preventDefault();
+        RedirectToPage($(this).attr('id').substring(3));
+        return false;
+    });
+
+    $(document).on("keydown", function (e) {
+        if (e.which === 120) { //For F9-Save                
+            e.preventDefault();
+            if (!IsPopupOpen && IsSubmitted == false && !($("#btnMainSubmit").is(':disabled'))) {
+                IsSubmitted = true;
+
+                showLoader();
+                if ($("#btnMainSubmit").is(':focus')) {
+                    setTimeout(function () { SubmitForm(PageMode); }, 1);
+                }
+                else {
+                    $("#btnMainSubmit").focus();
+                    setTimeout(function () { SubmitForm(PageMode); }, 10);
+                }
+            }
+        }
+        else if (e.which === 118) { //For F7-Reset                
+            e.preventDefault();
+            if (!IsPopupOpen && PageMode == 'Create') {
+                RedirectToPage('CreateReset');
+            }
+        }
+        else if (e.which === 113) { //For F2
+            e.preventDefault();
+            if (!IsPopupOpen) {
+                window.location.href = GenerateControllerActionUrl('Index');
+            }
+        }
+    });
+
+    /* Execute on Page Load */
+    $("#divMainContent").css('height', ($(window).height() - 122) < 300 ? 300 : ($(window).height() - 122));
+    $("#divMainContent").css('max-height', ($(window).height() - 122) < 300 ? 300 : ($(window).height() - 122));
+
+    if (PageMode == 'Edit') {
+        /* For CanUpdate */
+        if ($("#CanUpdate").val().toLowerCase() == 'false') {
+            $("#frmMain :input").attr("disabled", "disabled");
+            $("#btnBackToList").removeAttr("disabled");
+        }
+    }
+    setTimeout(function () { $("#BankName").focus(); }, 1);
+}
+
+function SubmitForm(PageMode) {
+    var bFlag = false;
+    try {
+        if ($("#frmMain").valid()) {
+            if (PageMode == 'Edit') {
+                bFlag = true;
+
+                ShowConfirmationAlert({
+                    message: 'Do you really want to Update?',
+                    callback: function (result) {
+                        if (result.value) {
+                            showLoader();
+                            setTimeout(function () { $("#frmMain").submit(); }, 1);
+                        }
+                        else {
+                            IsSubmitted = false;
+                        }
+                    }
+                });
+            }
+            else {
+                bFlag = true;
+                $("#frmMain").submit();
+            }
+        }
+        else {
+            ShowToastNotification({
+                type: 'warning',
+                title: 'Please provide all the required field to submit the form.',
+            });
+            setTimeout(function () { $('#frmMain .input-validation-error').filter(":enabled:visible:first").focus(); }, 1);
+        }
+    }
+    catch (err) {
+        ShowAlertNotification({
+            type: 'error',
+            title: 'Javascript Exception',
+            message: err.message
+        });
+        console.log('%cFunction Name		: ' + arguments.callee.name + '\nError Descriptions	: ' + err, "color: blue; font-weight: bold;");
+    }
+    finally {
+        if (bFlag == false) {
+            closeLoader();
+            IsSubmitted = false;
+        }
+        else if (PageMode == 'Edit' && bFlag == true) {
+            closeLoader();
+        }
+    }
+}
+ 
+function RedirectToPage(ActionType) {
+    if (ActionType == 'CreateReset') {
+        ShowConfirmationAlert({
+            message: 'Are you sure want to reset the page?',
+            callback: function (result) {
+                if (result.value) {
+                    window.location.href = GenerateControllerActionUrl('Create');
+                }
+            }
+        });
+    }
+    else {
+        window.location.href = GenerateControllerActionUrl('Index');
+    }
+    return false;
+}
+===================================contr===
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Web.Mvc;
+using QuraERP.Areas.Common.Models;
+using QuraERP.Entity.Common;
+using QuraERP.Entity.Admin;
+using QuraERP.Provider.Common;
+using QuraERP.Provider.Admin;
+
+namespace QuraERP.Areas.Admin.Controllers
+{
+    [Authorize]
+    public class BankMasterController : Controller
+    {
+        [HttpGet]
+        [AuthorizeWithSession(AreaName = "Admin", ControllerName = "BankMaster", ActionType = CRUD.Read, MakeLog = true)]
+        public ActionResult Index()
+        {
+            ViewBag.ShortcutKeys = "Shortcut Keys:&nbsp;&nbsp;&nbsp;&nbsp;F2-Add Bank";
+            return View();
+        }
+
+        [HttpPost]
+        [AuthorizeWithSession(IsAuthenticationOnly = true)]
+        public JsonResult PopulateGrid([ModelBinder(typeof(DTModelBinder))]DTParameterModel requestModel)
+        {
+            int TotalRecords = 0;
+            string ReturnMessage = string.Empty;
+            List<BankMaster> lst = new List<BankMaster>();
+
+            try
+            {
+                /* DataTable Parameter */
+                var SearchList = requestModel.Columns.ToList();
+                var OrderList = requestModel.Order.ToList();
+                var DTParameter = new DataTableParameter()
+                {
+                    StartRowNo = requestModel.Start + 1,
+                    EndRowNo = requestModel.Start + requestModel.Length,
+                    SortColumn = SearchList[OrderList[0].Column].Data,
+                    SortDirection = OrderList[0].Dir
+                };
+
+                /* Filter Parrameter */
+                var model = new BankMaster()
+                {
+                    BankCode = SearchList[2].Search.Value,
+                    BankName = SearchList[3].Search.Value
+                };
+
+                /* Code to PopulateGrid */
+                clsSession cSession = new clsSession();
+                BankMasterProvider uProvider = new BankMasterProvider();
+                lst = uProvider.PopulateGrid(lst, model, DTParameter, cSession, "Grid", out ReturnMessage);
+                cSession.Dispose();
+
+                /* Finally Get the TotalRecords if Success */
+                if (ReturnMessage == "Success" && lst.Count > 0)
+                {
+                    TotalRecords = lst[0].TotalRecords;
+                }
+            }
+            catch (Exception ex)
+            {
+                ReturnMessage = ex.Message;
+            }
+            return Json(new
+            {
+                ReturnMessage = ReturnMessage,
+                draw = requestModel.Draw,
+                recordsFiltered = TotalRecords,
+                data = lst
+            });
+        }
+
+        [HttpGet]
+        [AuthorizeWithSession(IsAuthenticationOnly = true)]
+        public ActionResult EditDetails(int? BankID)
+        {
+            string ReturnMessage = string.Empty;
+            if (BankID.HasValue)
+            {
+                var model = new BankMaster() { BankID = BankID };
+
+                clsSession cSession = new clsSession();
+                BankMasterProvider uProvider = new BankMasterProvider();
+                model = uProvider.GetDetails(model, cSession, out ReturnMessage);
+                cSession.Dispose();
+
+                if (ReturnMessage == "Success")
+                {
+                    if (!string.IsNullOrEmpty(model.BankCode))
+                    {
+                        TempData["Admin_BankMaster"] = model;
+                        return RedirectToAction("Details");
+                    }
+                }
+                else
+                {
+                    TempData["ErrorMessage"] = ReturnMessage;
+                }
+            }
+            return RedirectToAction("Index");
+        }
+
+        [HttpGet]
+        [AuthorizeWithSession(AreaName = "Admin", ControllerName = "BankMaster", ActionType = CRUD.Details, MakeLog = true)]
+        public ActionResult Details()
+        {
+            var model = new BankMaster();
+            if (TempData["Admin_BankMaster"] != null)
+            {
+                model = (BankMaster)TempData["Admin_BankMaster"];
+                model = EditUpdate(model, "EditDetails");
+                return View("Create", model);
+            }
+            return RedirectToAction("Index");
+        }
+
+        [HttpGet]
+        [AuthorizeWithSession(AreaName = "Admin", ControllerName = "BankMaster", ActionType = CRUD.Create, MakeLog = true)]
+        public ActionResult Create()
+        {
+            var model = new BankMaster();
+            model = EditUpdate(model, "Create");
+            return View(model);
+        }
+
+        private BankMaster EditUpdate(BankMaster model, string ActionType)
+        {
+            if (ActionType == "Create")
+            {
+                ViewBag.ShortcutKeys = "Shortcut Keys:&nbsp;&nbsp;&nbsp;&nbsp;F9-Save&nbsp;&nbsp;&nbsp;&nbsp;F7-Reset&nbsp;&nbsp;&nbsp;&nbsp;F2-Back";
+                ViewBag.Update = "Save";
+                ViewBag.Action = "Create";
+            }
+            else if (ActionType == "EditDetails")
+            {
+                ViewBag.ShortcutKeys = "Shortcut Keys:&nbsp;&nbsp;&nbsp;&nbsp;F9-Update&nbsp;&nbsp;&nbsp;&nbsp;F2-Back";
+                ViewBag.Update = "Update";
+                ViewBag.Action = "Edit";
+            }
+            return model;
+        }
+
+        [HttpPost]
+        [AuthorizeWithSession(AreaName = "Admin", ControllerName = "BankMaster", ActionType = CRUD.Create)]
+        public ActionResult Create(BankMaster model)
+        {
+            if (ModelState.IsValid)
+            {
+                clsSession cSession = new clsSession();
+                clsReturnMessage cMsg = new clsReturnMessage();
+                BankMasterProvider uProvider = new BankMasterProvider();
+                cMsg = uProvider.SaveRecord(model, cSession, cMsg);
+                cSession.Dispose();
+                if (cMsg.ReturnMessage == "Saved")
+                {
+                    ModelState.Clear();
+                    TempData["SuccessMessage"] = "Bank Saved Successfully.";
+                    return RedirectToAction("Create");
+                }
+                else if (cMsg.ReturnMessage == "Exists")
+                {
+                    TempData["WarningMessage"] = "Bank Already Exists.";
+                }
+                else
+                {
+                    TempData["ErrorMessage"] = cMsg.ReturnMessage;
+                }
+            }
+            else
+            {
+                TempData["ErrorMessage"] = "Please Review the following Error.";
+                foreach (ModelState modelState in ViewData.ModelState.Values)
+                {
+                    foreach (ModelError error in modelState.Errors)
+                    {
+                        TempData["ErrorMessage"] = TempData["ErrorMessage"].ToString() + "<br />" + error.ErrorMessage;
+                    }
+                }
+            }
+            model = EditUpdate(model, "Create");
+            return View("Create", model);
+        }
+
+        [HttpPost]
+        [AuthorizeWithSession(AreaName = "Admin", ControllerName = "BankMaster", ActionType = CRUD.Update)]
+        public ActionResult Edit(BankMaster model)
+        {
+            if (ModelState.IsValid)
+            {
+                clsSession cSession = new clsSession();
+                clsReturnMessage cMsg = new clsReturnMessage();
+                BankMasterProvider uProvider = new BankMasterProvider();
+                cMsg = uProvider.UpdateRecord(model, cSession, cMsg);
+                cSession.Dispose();
+                if (cMsg.ReturnMessage == "Updated")
+                {
+                    ModelState.Clear();
+                    TempData["SuccessMessage"] = "Bank Updated Successfully.";
+                    return RedirectToAction("Index");
+                }
+                else if (cMsg.ReturnMessage == "Exists")
+                {
+                    TempData["WarningMessage"] = "Bank Name Already Exists.";
+                }
+                else
+                {
+                    TempData["ErrorMessage"] = cMsg.ReturnMessage;
+                }
+            }
+            else
+            {
+                TempData["ErrorMessage"] = "Please Review the following Error.";
+                foreach (ModelState modelState in ViewData.ModelState.Values)
+                {
+                    foreach (ModelError error in modelState.Errors)
+                    {
+                        TempData["ErrorMessage"] = TempData["ErrorMessage"].ToString() + "<br />" + error.ErrorMessage;
+                    }
+                }
+            }
+            model = EditUpdate(model, "EditDetails");
+            return View("Create", model);
+        }
+
+        [HttpPost]
+        [AuthorizeWithSession(AreaName = "Admin", ControllerName = "BankMaster", ActionType = CRUD.Delete, MakeLog = true)]
+        public ActionResult Delete(int? BankID)
+        {
+            string rResult = "ModelInvalid";
+            if (BankID > 0)
+            {
+                clsSession cSession = new clsSession();
+                clsReturnMessage cMsg = new clsReturnMessage();
+                BankMasterProvider uProvider = new BankMasterProvider();
+                cMsg = uProvider.DeleteRecord(BankID, cSession, cMsg);
+                cSession.Dispose();
+                rResult = cMsg.ReturnMessage;
+            }
+            return Json(rResult);
+        }
+    }
+}
+==============================provider==
+
+using System;
+using System.Collections.Generic;
+using QuraERP.Entity.Common;
+using QuraERP.Entity.Admin;
+using QuraERP.DAO.Admin;
+
+namespace QuraERP.Provider.Admin
+{
+    public class BankMasterProvider
+    {
+        public List<BankMaster> PopulateGrid(List<BankMaster> lst, BankMaster model, DataTableParameter DTParameter, clsSession cSession, string PopulateType, out string ReturnMessage)
+        {
+            BankMasterDAO dao = new BankMasterDAO();
+            lst = dao.PopulateGrid(lst, model, DTParameter, cSession, PopulateType, out ReturnMessage);
+            return lst;
+        }
+
+        public BankMaster GetDetails(BankMaster model, clsSession cSession, out string ReturnMessage)
+        {
+            BankMasterDAO dao = new BankMasterDAO();
+            model = dao.GetDetails(model, cSession, out ReturnMessage);
+            return model;
+        }
+
+        public clsReturnMessage SaveRecord(BankMaster model, clsSession cSession, clsReturnMessage cMsg)
+        {
+            BankMasterDAO dao = new BankMasterDAO();
+            cMsg = dao.SaveRecord(model, cSession, cMsg);
+            return cMsg;
+        }
+
+        public clsReturnMessage UpdateRecord(BankMaster model, clsSession cSession, clsReturnMessage cMsg)
+        {
+            BankMasterDAO dao = new BankMasterDAO();
+            cMsg = dao.UpdateRecord(model, cSession, cMsg);
+            return cMsg;
+        }
+
+        public clsReturnMessage DeleteRecord(int? BankID, clsSession cSession, clsReturnMessage cMsg)
+        {
+            BankMasterDAO dao = new BankMasterDAO();
+            cMsg = dao.DeleteRecord(BankID, cSession, cMsg);
+            return cMsg;
+        }
+    }
+}
+
+==DAo==
+using System;
+using System.Collections.Generic;
+using System.Threading;
+using System.Data;
+using System.Data.SqlClient;
+using QuraERP.DAO.Common;
+using QuraERP.Entity.Common;
+using QuraERP.Entity.Admin;
+
+namespace QuraERP.DAO.Admin
+{
+    public class BankMasterDAO
+    {
+        public List<BankMaster> PopulateGrid(List<BankMaster> lst, BankMaster model, DataTableParameter DTParameter, clsSession cSession, string PopulateType, out string ReturnMessage)
+        {
+            DBConnect con = new DBConnect();
+            try
+            {
+                using (SqlCommand cmd = new SqlCommand())
+                {
+                    cmd.CommandType = CommandType.StoredProcedure;
+                    cmd.CommandText = "usp_Admin_Settings_BankMaster_PopulateGrid";
+                    cmd.Parameters.AddWithValue("@StartRowNo", DTParameter.StartRowNo);
+                    cmd.Parameters.AddWithValue("@EndRowNo", DTParameter.EndRowNo);
+                    if (string.IsNullOrEmpty(DTParameter.SortColumn))
+                    {
+                        cmd.Parameters.AddWithValue("@SortColumn", DBNull.Value);
+                    }
+                    else
+                    {
+                        cmd.Parameters.AddWithValue("@SortColumn", DTParameter.SortColumn);
+                    }
+                    if (string.IsNullOrEmpty(DTParameter.SortDirection))
+                    {
+                        cmd.Parameters.AddWithValue("@SortDirection", DBNull.Value);
+                    }
+                    else
+                    {
+                        cmd.Parameters.AddWithValue("@SortDirection", DTParameter.SortDirection);
+                    }
+                    if (string.IsNullOrEmpty(model.BankCode))
+                    {
+                        cmd.Parameters.AddWithValue("@BankCode", DBNull.Value);
+                    }
+                    else
+                    {
+                        cmd.Parameters.AddWithValue("@BankCode", model.BankCode.Trim());
+                    }
+                    if (string.IsNullOrEmpty(model.BankName))
+                    {
+                        cmd.Parameters.AddWithValue("@BankName", DBNull.Value);
+                    }
+                    else
+                    {
+                        cmd.Parameters.AddWithValue("@BankName", model.BankName.Trim());
+                    }
+                    cmd.Parameters.AddWithValue("@PopulateType", PopulateType);
+                    cmd.Parameters.AddWithValue("@LoginID", cSession.UID);
+                    cmd.Parameters.AddWithValue("@CompanyID", cSession.CompanyID);
+                    con.OpenConnection();
+                    cmd.Connection = con.Connection;
+                    using (SqlDataReader dr = cmd.ExecuteReader())
+                    {
+                        if (PopulateType == "SelectList" || PopulateType == "SelectListWithAll")
+                        {
+                            while (dr.Read())
+                            {
+                                lst.Add(new BankMaster
+                                {
+                                    BankID = Convert.ToInt32(dr["BankID"]),
+                                    BankName = Convert.ToString(dr["BankName"])
+                                });
+                            }
+                        }
+                        else
+                        {
+                            while (dr.Read())
+                            {
+                                lst.Add(new BankMaster
+                                {
+                                    TotalRecords = Convert.ToInt32(dr["TotalRecords"]),
+                                    RowID = Convert.ToInt32(dr["RowID"]),
+                                    BankID = Convert.ToInt32(dr["BankID"]),
+                                    BankCode = Convert.ToString(dr["BankCode"]),
+                                    BankName = Convert.ToString(dr["BankName"]),
+                                    CreatedBy = Convert.ToString(dr["CreatedBy"]),
+                                    CanDelete = Convert.ToBoolean(dr["CanDelete"])
+                                });
+                            }
+                        }
+                    }
+                    ReturnMessage = "Success";
+                }
+            }
+            catch (SqlException ex)
+            {
+                using (clsLog mLog = new clsLog())
+                {
+                    mLog.AddToLog_Error(cSession.SessionLogID, Convert.ToString(ex.Message), "Admin_BankMasterDAO", "PopulateGrid");
+                }
+                ReturnMessage = Convert.ToString(ex.Message);
+            }
+            catch (Exception ex)
+            {
+                using (clsLog mLog = new clsLog())
+                {
+                    mLog.AddToLog_Error(cSession.SessionLogID, Convert.ToString(ex.Message), "Admin_BankMasterDAO", "PopulateGrid");
+                }
+                ReturnMessage = Convert.ToString(ex.Message);
+            }
+            finally
+            {
+                con.CloseConnection();
+                con.Dispose();
+            }
+            return lst;
+        }
+
+        public BankMaster GetDetails(BankMaster model, clsSession cSession, out string ReturnMessage)
+        {
+            DBConnect con = new DBConnect();
+            try
+            {
+                using (SqlCommand cmd = new SqlCommand())
+                {
+                    cmd.CommandType = CommandType.StoredProcedure;
+                    cmd.CommandText = "usp_Admin_Settings_BankMaster_GetDetails";
+                    cmd.Parameters.AddWithValue("@BankID", model.BankID);
+                    cmd.Parameters.AddWithValue("@LoginID", cSession.UID);
+                    cmd.Parameters.AddWithValue("@CompanyID", cSession.CompanyID);
+                    con.OpenConnection();
+                    cmd.Connection = con.Connection;
+                    using (SqlDataReader dr = cmd.ExecuteReader())
+                    {
+                        while (dr.Read())
+                        {
+                            model.BankID = Convert.ToInt32(dr["BankID"]);
+                            model.BankCode = Convert.ToString(dr["BankCode"]);
+                            model.BankName = Convert.ToString(dr["BankName"]);
+                            model.CanUpdate = Convert.ToBoolean(dr["CanUpdate"]);
+                        }
+                    }
+                    ReturnMessage = "Success";
+                }
+            }
+            catch (SqlException ex)
+            {
+                using (clsLog mLog = new clsLog())
+                {
+                    mLog.AddToLog_Error(cSession.SessionLogID, Convert.ToString(ex.Message), "Admin_BankMasterDAO", "GetDetails");
+                }
+                ReturnMessage = Convert.ToString(ex.Message);
+            }
+            catch (Exception ex)
+            {
+                using (clsLog mLog = new clsLog())
+                {
+                    mLog.AddToLog_Error(cSession.SessionLogID, Convert.ToString(ex.Message), "Admin_BankMasterDAO", "GetDetails");
+                }
+                ReturnMessage = Convert.ToString(ex.Message);
+            }
+            finally
+            {
+                con.CloseConnection();
+                con.Dispose();
+            }
+            return model;
+        }
+
+        public clsReturnMessage SaveRecord(BankMaster model, clsSession cSession, clsReturnMessage cMsg)
+        {
+            DBConnect con = new DBConnect();
+            SqlTransaction ObjTran = null;
+            SqlParameter nReturnMessage = new SqlParameter();
+
+            int RetryCounter = 3;
+            do
+            {
+                try
+                {
+                    using (SqlCommand cmd = new SqlCommand())
+                    {
+                        cmd.CommandType = CommandType.StoredProcedure;
+                        cmd.CommandText = "usp_Admin_Settings_BankMaster_Add";
+                        cmd.Parameters.AddWithValue("@BankName", model.BankName.Trim().ToUpper());
+                        
+                        cmd.Parameters.AddWithValue("@SessionLogID", cSession.SessionLogID);
+                        cmd.Parameters.AddWithValue("@LoginID", cSession.UID);
+                        cmd.Parameters.AddWithValue("@CompanyID", cSession.CompanyID);
+                        nReturnMessage = cmd.Parameters.Add("@ReturnMessage", SqlDbType.VarChar, 50);
+                        nReturnMessage.Direction = ParameterDirection.Output;
+                        con.OpenConnection();
+                        cmd.Connection = con.Connection;
+                        ObjTran = con.BeginTransaction();
+                        cmd.Transaction = ObjTran;
+                        cmd.ExecuteNonQuery();
+                        RetryCounter = 0;
+                        cMsg.ReturnMessage = Convert.ToString(nReturnMessage.Value);
+                        if (cMsg.ReturnMessage == "Saved")
+                        {
+                            ObjTran.Commit();
+                        }
+                        else
+                        {
+                            ObjTran.Rollback();
+                        }
+                    }
+                }
+                catch (SqlException ex)
+                {
+                    if (ObjTran != null)
+                    {
+                        ObjTran.Rollback();
+                    }
+
+                    if ((ex.Number == 1205 || ex.Number == 2627) && (RetryCounter > 1))
+                    {
+                        RetryCounter = RetryCounter - 1;
+                        Thread.Sleep(500);
+                    }
+                    else
+                    {
+                        RetryCounter = 0;
+                        using (clsLog mLog = new clsLog())
+                        {
+                            mLog.AddToLog_Error(cSession.SessionLogID, Convert.ToString(ex.Message), "Admin_BankMasterDAO", "SaveRecord");
+                        }
+                        cMsg.ReturnMessage = Convert.ToString(ex.Message);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    if (ObjTran != null)
+                    {
+                        ObjTran.Rollback();
+                    }
+
+                    RetryCounter = 0;
+                    using (clsLog mLog = new clsLog())
+                    {
+                        mLog.AddToLog_Error(cSession.SessionLogID, Convert.ToString(ex.Message), "Admin_BankMasterDAO", "SaveRecord");
+                    }
+                    cMsg.ReturnMessage = Convert.ToString(ex.Message);
+                }
+                finally
+                {
+                    if (ObjTran != null)
+                    {
+                        ObjTran.Dispose();
+                    }
+                    con.CloseConnection();
+                    con.Dispose();
+                }
+            } while (RetryCounter > 0);
+            return cMsg;
+        }
+
+        public clsReturnMessage UpdateRecord(BankMaster model, clsSession cSession, clsReturnMessage cMsg)
+        {
+            DBConnect con = new DBConnect();
+            SqlTransaction ObjTran = null;
+            SqlParameter nReturnMessage = new SqlParameter();
+
+            int RetryCounter = 3;
+            do
+            {
+                try
+                {
+                    using (SqlCommand cmd = new SqlCommand())
+                    {
+                        cmd.CommandType = CommandType.StoredProcedure;
+                        cmd.CommandText = "usp_Admin_Settings_BankMaster_Update";
+                        cmd.Parameters.AddWithValue("@BankID", model.BankID);
+                        cmd.Parameters.AddWithValue("@BankName", model.BankName.Trim().ToUpper());
+                        cmd.Parameters.AddWithValue("@SessionLogID", cSession.SessionLogID);
+                        cmd.Parameters.AddWithValue("@CompanyID", cSession.CompanyID);
+                        nReturnMessage = cmd.Parameters.Add("@ReturnMessage", SqlDbType.VarChar, 50);
+                        nReturnMessage.Direction = ParameterDirection.Output;
+                        con.OpenConnection();
+                        cmd.Connection = con.Connection;
+                        ObjTran = con.BeginTransaction();
+                        cmd.Transaction = ObjTran;
+                        cmd.ExecuteNonQuery();
+                        RetryCounter = 0;
+                        cMsg.ReturnMessage = Convert.ToString(nReturnMessage.Value);
+                        if (cMsg.ReturnMessage == "Updated")
+                        {
+                            ObjTran.Commit();
+                        }
+                        else
+                        {
+                            ObjTran.Rollback();
+                        }
+                    }
+                }
+                catch (SqlException ex)
+                {
+                    if (ObjTran != null)
+                    {
+                        ObjTran.Rollback();
+                    }
+
+                    if ((ex.Number == 1205 || ex.Number == 2627) && (RetryCounter > 1))
+                    {
+                        RetryCounter = RetryCounter - 1;
+                        Thread.Sleep(500);
+                    }
+                    else
+                    {
+                        RetryCounter = 0;
+                        using (clsLog mLog = new clsLog())
+                        {
+                            mLog.AddToLog_Error(cSession.SessionLogID, Convert.ToString(ex.Message), "Admin_BankMasterDAO", "UpdateRecord");
+                        }
+                        cMsg.ReturnMessage = Convert.ToString(ex.Message);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    if (ObjTran != null)
+                    {
+                        ObjTran.Rollback();
+                    }
+
+                    RetryCounter = 0;
+                    using (clsLog mLog = new clsLog())
+                    {
+                        mLog.AddToLog_Error(cSession.SessionLogID, Convert.ToString(ex.Message), "Admin_BankMasterDAO", "UpdateRecord");
+                    }
+                    cMsg.ReturnMessage = Convert.ToString(ex.Message);
+                }
+                finally
+                {
+                    if (ObjTran != null)
+                    {
+                        ObjTran.Dispose();
+                    }
+                    con.CloseConnection();
+                    con.Dispose();
+                }
+            } while (RetryCounter > 0);
+            return cMsg;
+        }
+
+        public clsReturnMessage DeleteRecord(int? BankID, clsSession cSession, clsReturnMessage cMsg)
+        {
+            DBConnect con = new DBConnect();
+            SqlTransaction ObjTran = null;
+            SqlParameter nReturnMessage = new SqlParameter();
+
+            int RetryCounter = 3;
+            do
+            {
+                try
+                {
+                    using (SqlCommand cmd = new SqlCommand())
+                    {
+                        cmd.CommandType = CommandType.StoredProcedure;
+                        cmd.CommandText = "usp_Admin_Settings_BankMaster_Delete";
+                        cmd.Parameters.AddWithValue("@BankID", BankID);
+                        cmd.Parameters.AddWithValue("@SessionLogID", cSession.SessionLogID);
+                        cmd.Parameters.AddWithValue("@CompanyID", cSession.CompanyID);
+                        nReturnMessage = cmd.Parameters.Add("@ReturnMessage", SqlDbType.VarChar, 50);
+                        nReturnMessage.Direction = ParameterDirection.Output;
+                        con.OpenConnection();
+                        cmd.Connection = con.Connection;
+                        ObjTran = con.BeginTransaction();
+                        cmd.Transaction = ObjTran;
+                        cmd.ExecuteNonQuery();
+                        RetryCounter = 0;
+                        cMsg.ReturnMessage = Convert.ToString(nReturnMessage.Value);
+
+                        if (cMsg.ReturnMessage == "Deleted")
+                        {
+                            ObjTran.Commit();
+                        }
+                        else
+                        {
+                            ObjTran.Rollback();
+                        }
+                    }
+                }
+                catch (SqlException ex)
+                {
+                    if (ObjTran != null)
+                    {
+                        ObjTran.Rollback();
+                    }
+
+                    if ((ex.Number == 1205 || ex.Number == 2627) && (RetryCounter > 1))
+                    {
+                        RetryCounter = RetryCounter - 1;
+                        Thread.Sleep(500);
+                    }
+                    else
+                    {
+                        RetryCounter = 0;
+                        using (clsLog mLog = new clsLog())
+                        {
+                            mLog.AddToLog_Error(cSession.SessionLogID, Convert.ToString(ex.Message), "Admin_BankMasterDAO", "DeleteRecord");
+                        }
+                        cMsg.ReturnMessage = Convert.ToString(ex.Message);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    if (ObjTran != null)
+                    {
+                        ObjTran.Rollback();
+                    }
+
+                    RetryCounter = 0;
+                    using (clsLog mLog = new clsLog())
+                    {
+                        mLog.AddToLog_Error(cSession.SessionLogID, Convert.ToString(ex.Message), "Admin_BankMasterDAO", "DeleteRecord");
+                    }
+                    cMsg.ReturnMessage = Convert.ToString(ex.Message);
+                }
+                finally
+                {
+                    if (ObjTran != null)
+                    {
+                        ObjTran.Dispose();
+                    }
+                    con.CloseConnection();
+                    con.Dispose();
+                }
+            } while (RetryCounter > 0);
+            return cMsg;
+        }
+    }
+}

@@ -1,0 +1,35 @@
+
+	DECLARE @Product_Name varchar(50),@Generic_Name varchar(50),@Category_Name varchar(50),@Manufacture_Name varchar(50),
+	@UOM_Name varchar(50),@ProductId int,@GenericId int,@CategoryId int,@ManufactureId int,@UOMId int
+
+	DECLARE MultiplTable CURSOR FOR
+	SELECT ProductName,GenericName,CategoryName,ManufacturerName,UOMName from Noor_ProductList
+
+	open MultiplTable
+	fetch next from MultiplTable into
+	@Product_Name,@Generic_Name,@Category_Name,@Manufacture_Name,@UOM_Name --declare these!
+
+	while @@fetch_status = 0
+	BEGIN
+	INSERT INTO Noor_GenericMaster(GenericName) VALUES (@Generic_Name) 
+	SELECT @GenericId = Scope_Identity()
+
+	INSERT INTO Noor_CategoryMaster(CategoryName) VALUES (@Category_Name) 
+	SELECT @CategoryId = Scope_Identity()
+
+	INSERT INTO Noor_ManufacturerMaster(ManufacturerName) VALUES (@Manufacture_Name) 
+	SELECT @ManufactureId = Scope_Identity()
+
+	INSERT INTO Noor_UOMMaster(UOMName) VALUES (@UOM_Name)
+	SELECT @UOMId = Scope_Identity()
+
+	INSERT INTO Noor_ProductMaster (ProductName,GenericID,CategoryID,ManufaturerID,UOMID)
+	values (@Product_Name,@GenericId,@CategoryId,@ManufactureId,@UOMId)
+	SELECT @ProductId = Scope_Identity()  
+
+	fetch next from MultiplTable into @Product_Name,@Generic_Name,@Category_Name,@Manufacture_Name,@UOM_Name
+
+	END
+	close MultiplTable
+	deallocate MultiplTable
+

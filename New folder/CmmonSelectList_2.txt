@@ -1,0 +1,1018 @@
+----------------------------------------------------------------------------STEP 1st--------------------------Get TableList--
+CREATE PROCEDURE [dbo].[usp_Common_SelectList_GetDataTableList_IMS](
+@PageName VARCHAR(50),
+@GridName VARCHAR(50),
+@ColumnName VARCHAR(50),
+@LoginID INT,
+@CompanyID INT
+)
+AS
+ BEGIN
+	/* Transactions */
+	IF(@PageName = 'ConsumptionNote')
+	BEGIN
+		IF(@GridName = 'IndexGrid')
+		BEGIN
+			IF(@ColumnName = 'StoreName')
+			BEGIN
+				SELECT ('0')Value, ('All')Text, (0)DisplayOrder
+				UNION ALL
+				SELECT (StoreID)Value, (StoreName)Text, (1)DisplayOrder
+				FROM IMS_StoreMaster
+				WHERE IsActive = 1 AND CompanyID = @CompanyID
+				AND StoreID IN(SELECT StoreID FROM dbo.ufn_GetUserStoresByStoreID(@LoginID,0))
+				ORDER BY DisplayOrder, Text
+			END
+			ELSE IF(@ColumnName = 'StatusText')
+			BEGIN
+				SELECT ('0')Value, ('All')Text, (0)DisplayOrder
+				UNION ALL
+				SELECT (StatusID)Value, (StatusText)Text, (StatusID)DisplayOrder
+				FROM Common_StatusText
+				WHERE ForTable = 'IMS_ConsumptionNote'
+				ORDER BY DisplayOrder, Text
+			END
+		END
+	END
+	ELSE IF(@PageName = 'DisposalNote')
+	BEGIN
+		IF(@GridName = 'IndexGrid')
+		BEGIN
+			IF(@ColumnName = 'StoreName')
+			BEGIN
+				SELECT ('0')Value, ('All')Text, (0)DisplayOrder
+				UNION ALL
+				SELECT (StoreID)Value, (StoreName)Text, (1)DisplayOrder
+				FROM IMS_StoreMaster
+				WHERE IsActive = 1 AND CompanyID = @CompanyID
+				AND StoreID IN(SELECT StoreID FROM dbo.ufn_GetUserStoresByStoreID(@LoginID,0))
+				ORDER BY DisplayOrder, Text
+			END
+			ELSE IF(@ColumnName = 'DisposalReason')
+			BEGIN
+				SELECT ('0')Value, ('All')Text, (0)DisplayOrder
+				UNION ALL
+				SELECT (ReasonTypeID)Value, (ReasonTypeName)Text, (1)DisplayOrder
+				FROM IMS_ReasonTypeMaster
+				WHERE ReasonTypeFor = 2 AND IsActive = 1 AND CompanyID = @CompanyID
+				ORDER BY DisplayOrder, Text
+			END
+			ELSE IF(@ColumnName = 'StatusText')
+			BEGIN
+				SELECT ('0')Value, ('All')Text, (0)DisplayOrder
+				UNION ALL
+				SELECT (StatusID)Value, (StatusText)Text, (StatusID)DisplayOrder
+				FROM Common_StatusText
+				WHERE ForTable = 'IMS_DisposalNote'
+				ORDER BY DisplayOrder, Text
+			END
+		END
+	END
+	ELSE IF(@PageName IN('IndentNote','IndentNoteApproval'))
+	BEGIN
+		IF(@GridName = 'IndexGrid')
+		BEGIN
+			IF(@ColumnName = 'StoreName')
+			BEGIN
+				SELECT ('0')Value, ('All')Text, (0)DisplayOrder
+				UNION ALL
+				SELECT (StoreID)Value, (StoreName)Text, (1)DisplayOrder
+				FROM IMS_StoreMaster
+				WHERE CanRaiseIndent = 1 AND IsActive = 1 AND CompanyID = @CompanyID
+				AND StoreID IN(SELECT StoreID FROM dbo.ufn_GetUserStoresByStoreID(@LoginID,0))
+				ORDER BY DisplayOrder, Text
+			END
+			ELSE IF(@ColumnName = 'ToStoreName')
+			BEGIN
+				SELECT ('0')Value, ('All')Text, (0)DisplayOrder
+				UNION ALL
+				SELECT (StoreID)Value, (StoreName)Text, (1)DisplayOrder
+				FROM IMS_StoreMaster
+				WHERE CanIssueToStores = 1 AND IsActive = 1 AND CompanyID = @CompanyID
+				ORDER BY DisplayOrder, Text
+			END
+			ELSE IF(@PageName = 'IndentNote' AND @ColumnName = 'StatusText')
+			BEGIN
+				SELECT (StatusID)Value, (StatusText)Text, (StatusID)DisplayOrder
+				FROM Common_StatusText
+				WHERE ForTable = 'IMS_IndentNote'
+				UNION ALL
+				SELECT ('0')Value, ('All')Text, (100)SortOrder
+				ORDER BY DisplayOrder
+			END
+			ELSE IF(@PageName = 'IndentNoteApproval' AND @ColumnName = 'StatusText')
+			BEGIN
+				SELECT (StatusID)Value, (StatusText)Text, (StatusID)DisplayOrder
+				FROM Common_StatusText
+				WHERE ForTable = 'IMS_IndentNote' AND StatusID IN(1,3,4)
+				UNION ALL
+				SELECT ('0')Value, ('All')Text, (100)SortOrder
+				ORDER BY DisplayOrder
+			END
+		END
+	END
+	ELSE IF(@PageName IN('IssueNote'))
+	BEGIN
+		IF(@GridName = 'IndexGrid')
+		BEGIN
+			IF(@ColumnName = 'StoreName')
+			BEGIN
+				SELECT ('0')Value, ('All')Text, (0)DisplayOrder
+				UNION ALL
+				SELECT (StoreID)Value, (StoreName)Text, (1)DisplayOrder
+				FROM IMS_StoreMaster
+				WHERE CanIssueToStores = 1 AND IsActive = 1 AND CompanyID = @CompanyID
+				AND StoreID IN(SELECT StoreID FROM dbo.ufn_GetUserStoresByStoreID(@LoginID,0))
+				ORDER BY DisplayOrder, Text
+			END
+			ELSE IF(@ColumnName = 'ToStoreName')
+			BEGIN
+				SELECT ('0')Value, ('All')Text, (0)DisplayOrder
+				UNION ALL
+				SELECT (StoreID)Value, (StoreName)Text, (1)DisplayOrder
+				FROM IMS_StoreMaster
+				WHERE IsActive = 1 AND CompanyID = @CompanyID
+				ORDER BY DisplayOrder, Text
+			END
+			ELSE IF(@ColumnName = 'BasedOnName')
+			BEGIN
+				SELECT ('0')Value, ('All')Text, (0)DisplayOrder
+				UNION ALL
+				SELECT (iValue)Value, (TextValue)Text, (1)DisplayOrder
+				FROM Common_SelectList
+				WHERE AreaName = 'IMS' AND ControllerName = 'IssueNote'
+				AND FieldName = 'BasedOn' AND IsActive = 1
+				ORDER BY DisplayOrder, Text
+			END
+			ELSE IF(@ColumnName = 'StatusText')
+			BEGIN
+				SELECT ('0')Value, ('All')Text, (0)DisplayOrder
+				UNION ALL
+				SELECT (StatusID)Value, (StatusText)Text, (1)DisplayOrder
+				FROM Common_StatusText
+				WHERE ForTable = 'IMS_IssueNote'
+				ORDER BY DisplayOrder, Text
+			END
+		END
+	END
+	ELSE IF(@PageName IN('IssueNoteAccept'))
+	BEGIN
+		IF(@GridName = 'IndexGrid')
+		BEGIN
+			IF(@ColumnName = 'StoreName')
+			BEGIN
+				SELECT ('0')Value, ('All')Text, (0)DisplayOrder
+				UNION ALL
+				SELECT (StoreID)Value, (StoreName)Text, (1)DisplayOrder
+				FROM IMS_StoreMaster
+				WHERE CanIssueToStores = 1 AND IsActive = 1 AND CompanyID = @CompanyID
+				ORDER BY DisplayOrder, Text
+			END
+			ELSE IF(@ColumnName = 'ToStoreName')
+			BEGIN
+				SELECT ('0')Value, ('All')Text, (0)DisplayOrder
+				UNION ALL
+				SELECT (StoreID)Value, (StoreName)Text, (1)DisplayOrder
+				FROM IMS_StoreMaster
+				WHERE IsActive = 1 AND CompanyID = @CompanyID
+				AND StoreID IN(SELECT StoreID FROM dbo.ufn_GetUserStoresByStoreID(@LoginID,0))
+				ORDER BY DisplayOrder, Text
+			END
+			ELSE IF(@ColumnName = 'BasedOnName')
+			BEGIN
+				SELECT ('0')Value, ('All')Text, (0)DisplayOrder
+				UNION ALL
+				SELECT (iValue)Value, (TextValue)Text, (1)DisplayOrder
+				FROM Common_SelectList
+				WHERE AreaName = 'IMS' AND ControllerName = 'IssueNote'
+				AND FieldName = 'BasedOn' AND IsActive = 1
+				ORDER BY DisplayOrder, Text
+			END
+			ELSE IF(@ColumnName = 'StatusText')
+			BEGIN
+				SELECT (StatusID)Value, (StatusText)Text, (0)DisplayOrder
+				FROM Common_StatusText
+				WHERE ForTable = 'IMS_IssueNote' AND StatusID NOT IN(2)
+				UNION ALL
+				SELECT ('0')Value, ('All')Text, (1)DisplayOrder
+				ORDER BY DisplayOrder, Text DESC
+			END
+		END
+	END
+	ELSE IF(@PageName = 'OutwardNote')
+	BEGIN
+		IF(@GridName = 'IndexGrid')
+		BEGIN
+			IF(@ColumnName = 'StoreName')
+			BEGIN
+				SELECT ('0')Value, ('All')Text, (0)DisplayOrder
+				UNION ALL
+				SELECT (StoreID)Value, (StoreName)Text, (1)DisplayOrder
+				FROM IMS_StoreMaster
+				WHERE IsActive = 1 AND CompanyID = @CompanyID
+				AND StoreID IN(SELECT StoreID FROM dbo.ufn_GetUserStoresByStoreID(@LoginID,0))
+				ORDER BY DisplayOrder, Text
+			END
+			ELSE IF(@ColumnName = 'OutwardReason')
+			BEGIN
+				SELECT ('0')Value, ('All')Text, (0)DisplayOrder
+				UNION ALL
+				SELECT (ReasonTypeID)Value, (ReasonTypeName)Text, (1)DisplayOrder
+				FROM IMS_ReasonTypeMaster
+				WHERE ReasonTypeFor = 3 AND IsActive = 1 AND CompanyID = @CompanyID
+				ORDER BY DisplayOrder, Text
+			END
+			ELSE IF(@ColumnName = 'StatusText')
+			BEGIN
+				SELECT (StatusID)Value, (StatusText)Text, DisplayOrder
+				FROM Common_StatusText
+				WHERE ForTable = 'IMS_OutwardNote'
+				UNION ALL
+				SELECT ('0')Value, ('All')Text, (100)DisplayOrder
+				ORDER BY DisplayOrder, Text
+			END
+		END
+	END
+	ELSE IF(@PageName = 'ReturnNote')
+	BEGIN
+		IF(@GridName = 'IndexGrid')
+		BEGIN
+			IF(@ColumnName = 'StoreName')
+			BEGIN
+				SELECT ('0')Value, ('All')Text, (0)DisplayOrder
+				UNION ALL
+				SELECT (StoreID)Value, (StoreName)Text, (1)DisplayOrder
+				FROM IMS_StoreMaster
+				WHERE IsActive = 1 AND CompanyID = @CompanyID
+				AND StoreID IN(SELECT StoreID FROM dbo.ufn_GetUserStoresByStoreID(@LoginID,0))
+				ORDER BY DisplayOrder, Text
+			END
+			ELSE IF(@ColumnName = 'ToStoreName')
+			BEGIN
+				SELECT ('0')Value, ('All')Text, (0)DisplayOrder
+				UNION ALL
+				SELECT (StoreID)Value, (StoreName)Text, (1)DisplayOrder
+				FROM IMS_StoreMaster
+				WHERE CanIssueToStores = 1 AND IsActive = 1 AND CompanyID = @CompanyID
+				ORDER BY DisplayOrder, Text
+			END
+			ELSE IF(@ColumnName = 'StatusText')
+			BEGIN
+				SELECT ('0')Value, ('All')Text, (0)DisplayOrder
+				UNION ALL
+				SELECT (StatusID)Value, (StatusText)Text, (1)DisplayOrder
+				FROM Common_StatusText
+				WHERE ForTable = 'IMS_ReturnNote'
+				ORDER BY DisplayOrder, Text
+			END
+		END
+	END
+	ELSE IF(@PageName IN('ReturnNoteAccept'))
+	BEGIN
+		IF(@GridName = 'IndexGrid')
+		BEGIN
+			IF(@ColumnName = 'StoreName')
+			BEGIN
+				SELECT ('0')Value, ('All')Text, (0)DisplayOrder
+				UNION ALL
+				SELECT (StoreID)Value, (StoreName)Text, (1)DisplayOrder
+				FROM IMS_StoreMaster
+				WHERE IsActive = 1 AND CompanyID = @CompanyID
+				ORDER BY DisplayOrder, Text
+			END
+			ELSE IF(@ColumnName = 'ToStoreName')
+			BEGIN
+				SELECT ('0')Value, ('All')Text, (0)DisplayOrder
+				UNION ALL
+				SELECT (StoreID)Value, (StoreName)Text, (1)DisplayOrder
+				FROM IMS_StoreMaster
+				WHERE CanIssueToStores = 1 AND IsActive = 1 AND CompanyID = @CompanyID
+				AND StoreID IN(SELECT StoreID FROM dbo.ufn_GetUserStoresByStoreID(@LoginID,0))
+				ORDER BY DisplayOrder, Text
+			END
+			ELSE IF(@ColumnName = 'StatusText')
+			BEGIN
+				SELECT (StatusID)Value, (StatusText)Text, (0)DisplayOrder
+				FROM Common_StatusText
+				WHERE ForTable = 'IMS_ReturnNote' AND StatusID NOT IN(2)
+				UNION ALL
+				SELECT ('0')Value, ('All')Text, (1)DisplayOrder
+				ORDER BY DisplayOrder, Text DESC
+			END
+		END
+	END
+	ELSE IF(@PageName = 'StockAdjustment')
+	BEGIN
+		IF(@GridName = 'IndexGrid')
+		BEGIN
+			IF(@ColumnName IN('StoreName'))
+			BEGIN
+				SELECT ('0')Value, ('All')Text, (0)DisplayOrder
+				UNION ALL
+				SELECT (StoreID)Value, (StoreName)Text, (1)DisplayOrder
+				FROM IMS_StoreMaster
+				WHERE IsActive = 1 AND CompanyID = @CompanyID
+				AND StoreID IN(SELECT StoreID FROM dbo.ufn_GetUserStoresByStoreID(@LoginID,0))
+				ORDER BY DisplayOrder, Text
+			END
+			ELSE IF(@ColumnName = 'AdjustmentType')
+			BEGIN
+				SELECT ('0')Value, ('All')Text, (0)DisplayOrder
+				UNION ALL
+				SELECT (ReasonTypeID)Value, (ReasonTypeName)Text, (1)DisplayOrder
+				FROM IMS_ReasonTypeMaster
+				WHERE ReasonTypeFor = 1 AND IsActive = 1 AND CompanyID = @CompanyID
+				ORDER BY DisplayOrder, Text
+			END
+			ELSE IF(@ColumnName = 'StatusText')
+			BEGIN
+				SELECT ('0')Value, ('All')Text, (0)DisplayOrder
+				UNION ALL
+				SELECT (StatusID)Value, (StatusText)Text, (StatusID)DisplayOrder
+				FROM Common_StatusText
+				WHERE ForTable = 'IMS_StockAdjustment'
+				ORDER BY DisplayOrder, Text
+			END
+		END
+	END	
+	ELSE IF(@PageName = 'StockEntry')
+	BEGIN
+		IF(@GridName = 'IndexGrid')
+		BEGIN
+			IF(@ColumnName IN('StoreName'))
+			BEGIN
+				SELECT ('0')Value, ('All')Text, (0)DisplayOrder
+				UNION ALL
+				SELECT (StoreID)Value, (StoreName)Text, (1)DisplayOrder
+				FROM IMS_StoreMaster
+				WHERE IsActive = 1 AND CompanyID = @CompanyID
+				AND StoreID IN(SELECT StoreID FROM dbo.ufn_GetUserStoresByStoreID(@LoginID,0))
+				ORDER BY DisplayOrder, Text
+			END
+			ELSE IF(@ColumnName = 'StockTypeName')
+			BEGIN
+				SELECT ('0')Value, ('All')Text, (0)DisplayOrder
+				UNION ALL
+				SELECT (PurTypeID)Value, (PurTypeName)Text, (1)DisplayOrder
+				FROM PCR_PurTypeMaster
+				WHERE IsActive = 1 AND IsAllowedForSE = 1
+				ORDER BY DisplayOrder, Text
+			END
+			ELSE IF(@ColumnName = 'SupplierName')
+			BEGIN
+				SELECT ('0')Value, ('All')Text, (0)DisplayOrder
+				UNION ALL
+				SELECT (SupplierID)Value, (SupplierName)Text, (1)DisplayOrder
+				FROM IMS_SupplierMaster
+				WHERE IsActive = 1 AND CompanyID = @CompanyID
+				ORDER BY DisplayOrder, Text
+			END
+			ELSE IF(@ColumnName = 'StatusText')
+			BEGIN
+				SELECT ('0')Value, ('All')Text, (0)DisplayOrder
+				UNION ALL
+				SELECT (StatusID)Value, (StatusText)Text, (StatusID)DisplayOrder
+				FROM Common_StatusText
+				WHERE ForTable = 'PCR_PurInvoice'
+				ORDER BY DisplayOrder, Text
+			END
+		END
+	END
+	ELSE IF(@PageName = 'TransferNote')
+	BEGIN
+		IF(@GridName = 'IndexGrid')
+		BEGIN
+			IF(@ColumnName = 'StoreName')
+			BEGIN
+				SELECT ('0')Value, ('All')Text, (0)DisplayOrder
+				UNION ALL
+				SELECT (StoreID)Value, (StoreName)Text, (1)DisplayOrder
+				FROM IMS_StoreMaster
+				WHERE IsActive = 1 AND CompanyID = @CompanyID
+				AND StoreID IN(SELECT StoreID FROM dbo.ufn_GetUserStoresByStoreID(@LoginID,0))
+				ORDER BY DisplayOrder, Text
+			END
+			ELSE IF(@ColumnName = 'ToStoreName')
+			BEGIN
+				SELECT ('0')Value, ('All')Text, (0)DisplayOrder
+				UNION ALL
+				SELECT (StoreID)Value, (StoreName)Text, (1)DisplayOrder
+				FROM IMS_StoreMaster
+				WHERE IsActive = 1 AND CompanyID = @CompanyID
+				ORDER BY DisplayOrder, Text
+			END
+			ELSE IF(@ColumnName = 'StatusText')
+			BEGIN
+				SELECT ('0')Value, ('All')Text, (0)DisplayOrder
+				UNION ALL
+				SELECT (StatusID)Value, (StatusText)Text, (StatusID)DisplayOrder
+				FROM Common_StatusText
+				WHERE ForTable = 'IMS_TransferNote'
+				ORDER BY DisplayOrder, Text
+			END
+		END
+	END
+	ELSE IF(@PageName IN('TransferNoteAccept'))
+	BEGIN
+		IF(@GridName = 'IndexGrid')
+		BEGIN
+			IF(@ColumnName = 'StoreName')
+			BEGIN
+				SELECT ('0')Value, ('All')Text, (0)DisplayOrder
+				UNION ALL
+				SELECT (StoreID)Value, (StoreName)Text, (1)DisplayOrder
+				FROM IMS_StoreMaster
+				WHERE IsActive = 1 AND CompanyID = @CompanyID
+				ORDER BY DisplayOrder, Text
+			END
+			ELSE IF(@ColumnName = 'ToStoreName')
+			BEGIN
+				SELECT ('0')Value, ('All')Text, (0)DisplayOrder
+				UNION ALL
+				SELECT (StoreID)Value, (StoreName)Text, (1)DisplayOrder
+				FROM IMS_StoreMaster
+				WHERE IsActive = 1 AND CompanyID = @CompanyID
+				AND StoreID IN(SELECT StoreID FROM dbo.ufn_GetUserStoresByStoreID(@LoginID,0))
+				ORDER BY DisplayOrder, Text
+			END
+			ELSE IF(@ColumnName = 'StatusText')
+			BEGIN
+				SELECT (StatusID)Value, (StatusText)Text, (0)DisplayOrder
+				FROM Common_StatusText
+				WHERE ForTable = 'IMS_TransferNote' AND StatusID NOT IN(2)
+				UNION ALL
+				SELECT ('0')Value, ('All')Text, (1)DisplayOrder
+				ORDER BY DisplayOrder, Text DESC
+			END
+		END
+	END
+	/* Settings */
+	ELSE IF(@PageName = 'CategoryMaster')
+	BEGIN
+		IF(@ColumnName IN('CategoryTypeName'))
+		BEGIN
+			SELECT ('0')Value, ('All')Text, (0)DisplayOrder
+			UNION ALL
+			SELECT (CategoryTypeID)Value, (CategoryTypeName)Text, (1)DisplayOrder
+			FROM IMS_CategoryType	WHERE IsActive = 1
+			ORDER BY DisplayOrder, Text
+		END
+	END
+	ELSE IF(@PageName = 'GenericMaster')
+	BEGIN
+		IF(@GridName = 'IndexGrid')
+		BEGIN
+			IF(@ColumnName IN('CategoryTypeName'))
+			BEGIN
+				SELECT ('0')Value, ('All')Text, (0)DisplayOrder
+				UNION ALL
+				SELECT (CategoryTypeID)Value, (CategoryTypeName)Text, (1)DisplayOrder
+				FROM IMS_CategoryType	WHERE IsActive = 1
+				ORDER BY DisplayOrder, Text
+			END
+			ELSE IF(@ColumnName IN('CategoryName'))
+			BEGIN
+				SELECT ('0')Value, ('All')Text, (0)DisplayOrder
+				UNION ALL
+				SELECT (CategoryID)Value, (CategoryName)Text, (1)DisplayOrder
+				FROM IMS_CategoryMaster WHERE IsActive = 1
+				ORDER BY DisplayOrder, Text
+			END
+		END
+	END
+	ELSE IF(@PageName = 'ProductMaster')
+	BEGIN
+		IF(@GridName = 'IndexGrid')
+		BEGIN
+			IF(@ColumnName IN('CategoryTypeName'))
+			BEGIN
+				SELECT ('0')Value, ('All')Text, (0)DisplayOrder
+				UNION ALL
+				SELECT (CategoryTypeID)Value, (CategoryTypeName)Text, (1)DisplayOrder
+				FROM IMS_CategoryType	WHERE IsActive = 1
+				ORDER BY DisplayOrder, Text
+			END
+			ELSE IF(@ColumnName IN('CategoryName'))
+			BEGIN
+				SELECT ('0')Value, ('All')Text, (0)DisplayOrder
+				UNION ALL
+				SELECT (CategoryID)Value, (CategoryName)Text, (1)DisplayOrder
+				FROM IMS_CategoryMaster WHERE IsActive = 1
+				ORDER BY DisplayOrder, Text
+			END
+			ELSE IF(@ColumnName = 'UOMName')
+			BEGIN
+				SELECT ('0')Value, ('All')Text, (0)DisplayOrder
+				UNION ALL
+				SELECT (UOMID)Value, (UOMName)Text, (1)DisplayOrder
+				FROM IMS_UOMMaster WHERE IsActive = 1
+				ORDER BY DisplayOrder, Text
+			END
+		END
+	END
+	ELSE IF(@PageName = 'RackMaster')
+	BEGIN
+		IF(@GridName = 'IndexGrid')
+		BEGIN
+			IF(@ColumnName = 'StoreName')
+			BEGIN
+				SELECT ('0')Value, ('All')Text, (0)DisplayOrder
+				UNION ALL
+				SELECT (StoreID)Value, (StoreName)Text, (1)DisplayOrder
+				FROM IMS_StoreMaster
+				WHERE IsActive = 1 AND CompanyID = @CompanyID
+				ORDER BY DisplayOrder, Text
+			END
+		END
+	END
+	ELSE IF(@PageName = 'ReasonTypeMaster')
+	BEGIN
+		IF(@GridName = 'IndexGrid')
+		BEGIN
+			IF(@ColumnName = 'ReasonTypeFor')
+			BEGIN
+				SELECT ('0')Value, ('All')Text, (0)DisplayOrder
+				UNION ALL
+				SELECT (iValue)Value, (TextValue)Text, (1)DisplayOrder
+				FROM Common_SelectList
+				WHERE AreaName = 'IMS' AND ControllerName = 'ReasonTypeMaster'
+				AND FieldName = 'ReasonTypeFor' AND IsActive = 1
+				ORDER BY DisplayOrder, Text
+			END
+		END
+	END
+	ELSE IF(@PageName = 'SupplierMaster')
+	BEGIN
+		IF(@GridName = 'IndexGrid')
+		BEGIN
+			IF(@ColumnName = 'SupplierCity')
+			BEGIN
+				SELECT ('All')Value, ('All')Text, (0)DisplayOrder
+				UNION ALL
+				SELECT DISTINCT (SupplierCity)Value, (SupplierCity)Text, (1)DisplayOrder
+				FROM IMS_SupplierMaster
+				WHERE IsActive = 1 AND CompanyID = @CompanyID
+				ORDER BY DisplayOrder, Text
+			END
+		END
+	END
+	ELSE IF(@PageName = 'StockDetail')
+	BEGIN
+		IF(@GridName = 'IndexGrid')
+		BEGIN
+			IF(@ColumnName = 'StoreName')
+			BEGIN
+				SELECT ('0')Value, ('All')Text, (0)DisplayOrder
+				UNION ALL
+				SELECT (StoreID)Value, (StoreName)Text, (1)DisplayOrder
+				FROM IMS_StoreMaster where isActive=1
+				ORDER BY DisplayOrder, Text
+			END			
+		END
+	END
+ END
+
+
+GO
+
+
+---------------------------------------------------------------------STEP 2nd------------------------------------------------
+
+USE [QuraERP]
+GO
+
+/****** Object:  StoredProcedure [dbo].[usp_Common_SelectList_GetDataTableList]    Script Date: 14-10-2020 12.48.57 PM ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE PROCEDURE [dbo].[usp_Common_SelectList_GetDataTableList](
+@ModuleName VARCHAR(50),
+@PageName VARCHAR(50),
+@GridName VARCHAR(50),
+@ColumnName VARCHAR(50),
+@LoginID INT,
+@CompanyID INT
+)
+AS
+ BEGIN
+	IF(@ModuleName = 'Admin')
+	BEGIN
+		EXEC usp_Common_SelectList_GetDataTableList_Admin @PageName, @GridName, @ColumnName, @LoginID, @CompanyID
+	END
+	ELSE IF(@ModuleName = 'HR')
+	BEGIN
+		EXEC usp_Common_SelectList_GetDataTableList_HR @PageName, @GridName, @ColumnName, @LoginID, @CompanyID
+	END
+	ELSE IF(@ModuleName = 'IMS')
+	BEGIN
+		EXEC usp_Common_SelectList_GetDataTableList_IMS @PageName, @GridName, @ColumnName, @LoginID, @CompanyID
+	END
+	ELSE IF(@ModuleName = 'PCR')
+	BEGIN
+		EXEC usp_Common_SelectList_GetDataTableList_PCR @PageName, @GridName, @ColumnName, @LoginID, @CompanyID
+	END
+	ELSE IF(@ModuleName = 'PR')
+	BEGIN
+		EXEC usp_Common_SelectList_GetDataTableList_PR @PageName, @GridName, @ColumnName, @LoginID, @CompanyID
+	END
+	ELSE IF(@ModuleName = 'SD')
+	BEGIN
+		EXEC usp_Common_SelectList_GetDataTableList_SD @PageName, @GridName, @ColumnName, @LoginID, @CompanyID
+	END
+	ELSE IF(@ModuleName = 'WB')
+	BEGIN
+		EXEC usp_Common_SelectList_GetDataTableList_WB @PageName, @GridName, @ColumnName, @LoginID, @CompanyID
+	END
+
+ END
+
+
+
+GO
+
+
+---------------------------------------------------------------------------------------------------------------------------
+-----------------------------------------------------STEP  1st--------------------Get StaticList--------------------------------------------------
+
+USE [QuraERP]
+GO
+
+/****** Object:  StoredProcedure [dbo].[usp_Common_SelectList_GetStaticList_IMS]    Script Date: 14-10-2020 12.49.43 PM ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE PROCEDURE [dbo].[usp_Common_SelectList_GetStaticList_IMS](
+@PageName VARCHAR(50),
+@FieldName VARCHAR(50),
+@LoginID INT,
+@CompanyID INT
+)
+AS
+ BEGIN
+	/* Transactions */
+	IF(@PageName = 'ConsumptionNote')
+	BEGIN
+		IF(@FieldName = 'SearchBy')
+		BEGIN
+			SELECT (iValue)Value, (TextValue)Text
+			FROM Common_SelectList
+			WHERE AreaName = 'IMS' AND ControllerName = 'ConsumptionNote'
+			AND FieldName = 'SearchBy' AND IsActive = 1
+			ORDER BY DisplayOrder
+		END
+	END
+	ELSE IF(@PageName = 'DisposalNote')
+	BEGIN
+		IF(@FieldName = 'SearchBy')
+		BEGIN
+			SELECT (iValue)Value, (TextValue)Text
+			FROM Common_SelectList
+			WHERE AreaName = 'IMS' AND ControllerName = 'DisposalNote'
+			AND FieldName = 'SearchBy' AND IsActive = 1
+			ORDER BY DisplayOrder
+		END
+	END
+	ELSE IF(@PageName = 'IndentNote')
+	BEGIN
+		IF(@FieldName IN('CategoryType'))
+		BEGIN
+			SELECT (CategoryTypeID)Value, (CategoryTypeName)Text
+			FROM IMS_CategoryType WHERE IsActive = 1
+			ORDER BY DisplayOrder
+		END
+		ELSE IF(@FieldName = 'SearchBy')
+		BEGIN
+			SELECT (iValue)Value, (TextValue)Text
+			FROM Common_SelectList
+			WHERE AreaName = 'IMS' AND ControllerName = 'IndentNote'
+			AND FieldName = 'SearchBy' AND IsActive = 1
+			ORDER BY DisplayOrder
+		END
+	END
+	ELSE IF(@PageName = 'IssueNote')
+	BEGIN
+		IF(@FieldName = 'BasedOn')
+		BEGIN
+			SELECT (iValue)Value, (TextValue)Text
+			FROM Common_SelectList
+			WHERE AreaName = 'IMS' AND ControllerName = 'IssueNote'
+			AND FieldName = 'BasedOn' AND IsActive = 1
+			ORDER BY DisplayOrder
+		END
+		ELSE IF(@FieldName = 'SearchBy')
+		BEGIN
+			SELECT (iValue)Value, (TextValue)Text
+			FROM Common_SelectList
+			WHERE AreaName = 'IMS' AND ControllerName = 'IssueNote'
+			AND FieldName = 'SearchBy' AND IsActive = 1
+			ORDER BY DisplayOrder
+		END
+		ELSE IF(@FieldName IN('CategoryType'))
+		BEGIN
+			SELECT (0)Value, ('All')Text, (0)DisplayOrder
+			UNION ALL
+			SELECT (CategoryTypeID)Value, (CategoryTypeName)Text, DisplayOrder
+			FROM IMS_CategoryType WHERE IsActive = 1
+			ORDER BY DisplayOrder
+		END
+		ELSE IF(@FieldName = 'IndentStatus')
+		BEGIN
+			SELECT (0)Value, ('All')Text, (0)DisplayOrder
+			UNION ALL
+			SELECT (StatusID)Value, (StatusText)Text, DisplayOrder
+			FROM Common_StatusText
+			WHERE ForTable = 'IMS_IndentNote' AND StatusID IN(3,5)
+			ORDER BY DisplayOrder
+		END
+	END
+	ELSE IF(@PageName = 'OutwardNote')
+	BEGIN
+		IF(@FieldName = 'SearchBy')
+		BEGIN
+			SELECT (iValue)Value, (TextValue)Text
+			FROM Common_SelectList
+			WHERE AreaName = 'IMS' AND ControllerName = 'OutwardNote'
+			AND FieldName = 'SearchBy' AND IsActive = 1
+			ORDER BY DisplayOrder
+		END
+	END
+	ELSE IF(@PageName = 'ReturnNote')
+	BEGIN
+		IF(@FieldName = 'SearchBy')
+		BEGIN
+			SELECT (iValue)Value, (TextValue)Text
+			FROM Common_SelectList
+			WHERE AreaName = 'IMS' AND ControllerName = 'ReturnNote'
+			AND FieldName = 'SearchBy' AND IsActive = 1
+			ORDER BY DisplayOrder
+		END
+	END
+	ELSE IF(@PageName = 'StockAdjustment')
+	BEGIN
+		IF(@FieldName = 'SearchBy')
+		BEGIN
+			SELECT (iValue)Value, (TextValue)Text
+			FROM Common_SelectList
+			WHERE AreaName = 'IMS' AND ControllerName = 'StockAdjustment'
+			AND FieldName = 'SearchBy' AND IsActive = 1
+			ORDER BY DisplayOrder
+		END
+	END
+	ELSE IF(@PageName = 'StockEntry')
+	BEGIN
+		IF(@FieldName = 'StockType')
+		BEGIN
+			SELECT (PurTypeID)Value, (PurTypeName)Text
+			FROM PCR_PurTypeMaster
+			WHERE IsActive = 1 AND IsAllowedForSE = 1
+			ORDER BY PurTypeName
+		END
+		ELSE IF(@FieldName = 'SearchBy')
+		BEGIN
+			SELECT (iValue)Value, (TextValue)Text
+			FROM Common_SelectList
+			WHERE AreaName = 'IMS' AND ControllerName = 'StockEntry'
+			AND FieldName = 'SearchBy' AND IsActive = 1
+			ORDER BY DisplayOrder
+		END
+		ELSE IF(@FieldName = 'PurTaxOn')
+		BEGIN
+			SELECT (iValue)Value, (TextValue)Text
+			FROM Common_SelectList
+			WHERE AreaName = 'IMS' AND ControllerName = 'ProductMaster'
+			AND FieldName = 'PurTaxOn' AND IsActive = 1
+			ORDER BY DisplayOrder
+		END
+	END
+	ELSE IF(@PageName = 'TransferNote')
+	BEGIN
+		IF(@FieldName = 'SearchBy')
+		BEGIN
+			SELECT (iValue)Value, (TextValue)Text
+			FROM Common_SelectList
+			WHERE AreaName = 'IMS' AND ControllerName = 'TransferNote'
+			AND FieldName = 'SearchBy' AND IsActive = 1
+			ORDER BY DisplayOrder
+		END
+	END
+	/* Settings */
+	ELSE IF(@PageName = 'CategoryMaster')
+	BEGIN
+		IF(@FieldName = 'CategoryType')
+		BEGIN
+			SELECT (CategoryTypeID)Value, (CategoryTypeName)Text
+			FROM IMS_CategoryType WHERE IsActive = 1
+			ORDER BY DisplayOrder
+		END
+	END
+	ELSE IF(@PageName = 'GenericMaster')
+	BEGIN
+		IF(@FieldName = 'CategoryType')
+		BEGIN
+			SELECT (CategoryTypeID)Value, (CategoryTypeName)Text
+			FROM IMS_CategoryType WHERE IsActive = 1
+			ORDER BY DisplayOrder
+		END
+	END
+	ELSE IF(@PageName = 'ProductMaster')
+	BEGIN
+		IF(@FieldName IN('CategoryType','ReOrderLevel_CategoryType'))
+		BEGIN
+			SELECT (0)Value, ('All')Text, (0)DisplayOrder
+			WHERE @FieldName = 'ReOrderLevel_CategoryType'
+			UNION ALL
+			SELECT (CategoryTypeID)Value, (CategoryTypeName)Text, DisplayOrder
+			FROM IMS_CategoryType WHERE IsActive = 1
+			ORDER BY DisplayOrder
+		END
+		ELSE IF(@FieldName = 'PurTaxOn')
+		BEGIN
+			SELECT (iValue)Value, (TextValue)Text
+			FROM Common_SelectList
+			WHERE AreaName = 'IMS' AND ControllerName = 'ProductMaster'
+			AND FieldName = 'PurTaxOn' AND IsActive = 1
+			ORDER BY DisplayOrder
+		END
+		ELSE IF(@FieldName = 'ExpiryDateMode')
+		BEGIN
+			SELECT (ExpiryMode)Value, (ExpiryModeText)Text
+			FROM IMS_ExpiryDateMode WHERE IsActive = 1
+			ORDER BY DisplayOrder
+		END
+		ELSE IF(@FieldName = 'ExpiryReminderType')
+		BEGIN
+			SELECT (ExpiryReminderType)Value, (ExpiryReminderText)Text
+			FROM IMS_ExpiryReminderType WHERE IsActive = 1
+			ORDER BY DisplayOrder
+		END
+		ELSE IF(@FieldName = 'ReOrderLevel_SearchBy')
+		BEGIN
+			SELECT (iValue)Value, (TextValue)Text
+			FROM Common_SelectList
+			WHERE AreaName = 'IMS' AND ControllerName = 'ProductMaster'
+			AND FieldName = 'ReOrderLevel_SearchBy' AND IsActive = 1
+			ORDER BY DisplayOrder
+		END
+	END
+	ELSE IF(@PageName = 'RackMaster')
+	BEGIN
+		IF(@FieldName = 'CategoryType')
+		BEGIN
+			SELECT (CategoryTypeID)Value, (CategoryTypeName)Text
+			FROM IMS_CategoryType WHERE IsActive = 1
+			ORDER BY DisplayOrder
+		END
+		ELSE IF(@FieldName = 'SearchBy')
+		BEGIN
+			SELECT (iValue)Value, (TextValue)Text
+			FROM Common_SelectList
+			WHERE AreaName = 'IMS' AND ControllerName = 'RackMaster'
+			AND FieldName = 'SearchBy' AND IsActive = 1
+			ORDER BY DisplayOrder
+		END
+	END
+	ELSE IF(@PageName = 'ReasonTypeMaster')
+	BEGIN
+		IF(@FieldName = 'ReasonTypeFor')
+		BEGIN
+			SELECT (iValue)Value, (TextValue)Text
+			FROM Common_SelectList
+			WHERE AreaName = 'IMS' AND ControllerName = 'ReasonTypeMaster'
+			AND FieldName = 'ReasonTypeFor' AND IsActive = 1
+			ORDER BY DisplayOrder
+		END
+	END
+	ELSE IF(@PageName = 'StoreMaster')
+	BEGIN
+		IF(@FieldName = 'InwardAcceptType')
+		BEGIN
+			SELECT (iValue)Value, (TextValue)Text
+			FROM Common_SelectList
+			WHERE AreaName = 'IMS' AND ControllerName = 'StoreMaster'
+			AND FieldName = 'InwardAcceptType' AND IsActive = 1
+			ORDER BY DisplayOrder
+		END
+	END
+	/* Reports */
+	ELSE IF(@PageName IN('rptAdjustmentRegister','rptBelowReorderLevel','rptConsumptionRegister',
+	'rptDisposalRegister','rptIndentRegister','rptOutwardRegister','rptProductExpiry',
+	'rptStockEntryRegister','rptStockLedger','rptStockLevel','rptStockMovement'))
+	BEGIN
+		IF(@FieldName IN('GroupBy','SearchBy','ViewBy'))
+		BEGIN
+			SELECT (0)Value, ('All')Text, (0)DisplayOrder
+			WHERE @FieldName IN('GroupBy')
+			UNION ALL
+			SELECT (iValue)Value, (TextValue)Text, DisplayOrder
+			FROM Common_SelectList
+			WHERE AreaName = 'IMS' AND ControllerName = @PageName
+			AND FieldName = @FieldName AND IsActive = 1
+			ORDER BY DisplayOrder
+		END
+		ELSE IF(@FieldName = 'CategoryType')
+		BEGIN
+			SELECT (0)Value, ('All')Text, (0)DisplayOrder
+			UNION ALL
+			SELECT (CategoryTypeID)Value, (CategoryTypeName)Text, DisplayOrder
+			FROM IMS_CategoryType WHERE IsActive = 1
+			ORDER BY DisplayOrder
+		END
+		ELSE IF(@PageName = 'rptProductExpiry' AND @FieldName = 'CategoryType')
+		BEGIN
+			SELECT (0)Value, ('All')Text, (0)DisplayOrder
+			UNION ALL
+			SELECT (CategoryTypeID)Value, (CategoryTypeName)Text, DisplayOrder
+			FROM IMS_CategoryType
+			WHERE IsActive = 1 AND CategoryTypeID NOT IN(1)
+			ORDER BY DisplayOrder
+		END
+		ELSE IF(@PageName = 'rptStockEntryRegister' AND @FieldName = 'StockType')
+		BEGIN
+			SELECT (0)Value, ('All')Text, (0)DisplayOrder
+			UNION ALL
+			SELECT (PurTypeID)Value, (PurTypeName)Text, (1)DisplayOrder
+			FROM PCR_PurTypeMaster
+			WHERE IsActive = 1 AND IsAllowedForSE = 1
+			ORDER BY DisplayOrder, Text
+		END
+		ELSE IF(@PageName = 'rptIndentRegister' AND @FieldName = 'StatusText')
+		BEGIN
+			SELECT (0)Value, ('All')Text, (0)DisplayOrder
+			UNION ALL
+			SELECT (StatusID)Value, (StatusText)Text, DisplayOrder
+			FROM Common_StatusText
+			WHERE StatusID NOT IN(2,4) AND ForTable = 'IMS_IndentNote'
+			ORDER BY DisplayOrder
+		END
+		ELSE IF(@PageName = 'rptOutwardRegister' AND @FieldName = 'StatusText')
+		BEGIN
+			SELECT (0)Value, ('All')Text, (0)DisplayOrder
+			UNION ALL
+			SELECT (StatusID)Value, (StatusText)Text, DisplayOrder
+			FROM Common_StatusText
+			WHERE StatusID NOT IN(2) AND ForTable = 'IMS_OutwardNote'
+			ORDER BY DisplayOrder
+		END
+	END
+ END
+
+
+GO
+
+
+--------------------------------------------------------------------------------------------------------------------------------------------------
+-----------------------------------------------------------------------Step 2nd-------------------------------------------------------------------
+
+
+CREATE PROCEDURE [dbo].[usp_Common_SelectList_GetStaticList](
+@ModuleName VARCHAR(50),
+@PageName VARCHAR(50),
+@FieldName VARCHAR(50),
+@LoginID INT,
+@CompanyID INT
+)
+AS
+ BEGIN
+	IF(@ModuleName = 'Admin')
+	BEGIN
+		EXEC usp_Common_SelectList_GetStaticList_Admin @PageName, @FieldName, @LoginID, @CompanyID
+	END
+	ELSE IF(@ModuleName = 'HR')
+	BEGIN
+		EXEC usp_Common_SelectList_GetStaticList_HR @PageName, @FieldName, @LoginID, @CompanyID
+	END
+	ELSE IF(@ModuleName = 'IMS')
+	BEGIN
+		EXEC usp_Common_SelectList_GetStaticList_IMS @PageName, @FieldName, @LoginID, @CompanyID
+	END
+	ELSE IF(@ModuleName = 'PCR')
+	BEGIN
+		EXEC usp_Common_SelectList_GetStaticList_PCR @PageName, @FieldName, @LoginID, @CompanyID
+	END
+	ELSE IF(@ModuleName = 'PR')
+	BEGIN
+		EXEC usp_Common_SelectList_GetStaticList_PR @PageName, @FieldName, @LoginID, @CompanyID
+	END
+	ELSE IF(@ModuleName = 'SD')
+	BEGIN
+		EXEC usp_Common_SelectList_GetStaticList_SD @PageName, @FieldName, @LoginID, @CompanyID
+	END
+	ELSE IF(@ModuleName = 'WB')
+	BEGIN
+		EXEC usp_Common_SelectList_GetStaticList_WB @PageName, @FieldName, @LoginID, @CompanyID
+	END
+ END
+
+
+
+
+GO
+
+
+-----------------------------------------------------------------------------------------------

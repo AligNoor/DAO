@@ -1,0 +1,18 @@
+=====================================Performa Invoice=================================================
+insert into Common_SelectList
+(AreaName,ControllerName,FieldName,iValue,TextValue,DisplayOrder,IsActive)
+values('SD','ProformaInvoice','SalesTaxType',1,'Intra-State GST',1,1),
+('SD','ProformaInvoice','SalesTaxType',2,'Inter-State GST',2,1)
+========================================================Sales Order==================================
+
+insert into Common_SelectList
+(AreaName,ControllerName,FieldName,iValue,TextValue,DisplayOrder,IsActive)
+values('SD','SalesOrder','SalesTaxType',1,'Intra-State GST',1,1),
+('SD','SalesOrder','SalesTaxType',2,'Inter-State GST',2,1)
+
+=====================================================Sale Invoice========================================
+
+insert into Common_SelectList
+(AreaName,ControllerName,FieldName,iValue,TextValue,DisplayOrder,IsActive)
+values('SD','SalesInvoice','SalesTaxType',1,'Intra-State GST',1,1),
+('SD','SalesInvoice','SalesTaxType',2,'Inter-State GST',2,1)

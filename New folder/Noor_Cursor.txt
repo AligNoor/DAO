@@ -1,0 +1,30 @@
+	DECLARE @IDCardID int,@Name varchar(50),@Dept varchar(50),@DeptID int
+	
+	DECLARE cSecondTestwiseLab CURSOR FOR
+	SELECT * from Noor_ProductList
+	
+	OPEN cSecondTestwiseLab
+	FETCH NEXT FROM cSecondTestwiseLab INTO @IDCardID, @Name,@Dept
+
+	WHILE @@FETCH_status=0
+	BEGIN
+		
+			
+
+			
+		FETCH NEXT FROM cSecondTestwiseLab INTO @IDCardID, @Name,@Dept
+	END
+	CLOSE cSecondTestwiseLab
+	DEALLOCATE cSecondTestwiseLab
+
+
+
+select * from Noor_ProductList
+
+
+---Noor_ProductMaster [ProductID,ProductName,GenericID,CategoryID,ManufaturerID,UOMID]
+--Noor_GenericMaster [GenericID,GenericName]
+--Noor_CategoryMaster [CategoryID, CategoryName]
+--Noor_ManufaturerMaster [ManufaturerID, ManufaturerName]
+--Noor_UOMMaster [UOMID, UOMName]
+

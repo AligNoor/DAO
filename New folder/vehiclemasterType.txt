@@ -1,0 +1,1367 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Web;
+using System.Web.Mvc;
+using QuraERP.Areas.Common.Models;
+using QuraERP.Entity.Common;
+using QuraERP.Entity.WB;
+using QuraERP.Provider.Common;
+using QuraERP.Provider.WB;
+using System.Diagnostics;
+
+namespace QuraERP.Areas.WB.Controllers
+{
+    [Authorize]
+    public class VehicleTypeMasterController : Controller
+    {
+        [HttpGet]
+        [AuthorizeWithSession(AreaName = "WB", ControllerName = "VehicleTypeMaster", ActionType = CRUD.Read, MakeLog = true)]
+        public ActionResult Index()
+        {
+            ViewBag.ShortcutKeys = "Shortcut Keys:&nbsp;&nbsp;&nbsp;&nbsp;F2-Add Vehicle";
+            return View();
+        }
+
+        [HttpPost]
+        [AuthorizeWithSession(IsAuthenticationOnly = true)]
+        public JsonResult PopulateGrid([ModelBinder(typeof(DTModelBinder))]DTParameterModel requestModel)
+        {
+            int TotalRecords = 0;
+            string ReturnMessage = string.Empty;
+            List<VehicleTypeMaster> lst = new List<VehicleTypeMaster>();
+
+            try
+            {
+                /* DataTable Parameter */
+                var SearchList = requestModel.Columns.ToList();
+                var OrderList = requestModel.Order.ToList();
+                var DTParameter = new DataTableParameter()
+                {
+                    StartRowNo = requestModel.Start + 1,
+                    EndRowNo = requestModel.Start + requestModel.Length,
+                    SortColumn = SearchList[OrderList[0].Column].Data,
+                    SortDirection = OrderList[0].Dir
+                };
+
+                /* Filter Parrameter */
+                var model = new VehicleTypeMaster()
+                {
+                    VehicleTypeCode = SearchList[2].Search.Value,
+                    VehicleTypeName = SearchList[3].Search.Value
+                };
+
+                /* Code to PopulateGrid */
+                clsSession cSession = new clsSession();
+                VehicleTypeMasterProvider uProvider = new VehicleTypeMasterProvider();
+                lst = uProvider.PopulateGrid(lst, model, DTParameter, cSession, "Grid", out ReturnMessage);
+                cSession.Dispose();
+
+                /* Finally Get the TotalRecords if Success */
+                if (ReturnMessage == "Success" && lst.Count > 0)
+                {
+                    TotalRecords = lst[0].TotalRecords;
+                }
+            }
+            catch (Exception ex)
+            {
+                new clsLogProvider().AddToLog_Error((int?)null, ex.Message, "WB_Controller_VehicleTypeMaster", "PopulateGrid");
+                ReturnMessage = Debugger.IsAttached ? Convert.ToString(ex.Message) : "ServerErrorOccurred";
+            }
+            return Json(new
+            {
+                ReturnMessage = ReturnMessage,
+                draw = requestModel.Draw,
+                recordsFiltered = TotalRecords,
+                data = lst
+            });
+        }
+
+        [HttpGet]
+        [AuthorizeWithSession(IsAuthenticationOnly = true)]
+        public ActionResult EditDetails(int? VehicleTypeID)
+        {
+            string ReturnMessage = string.Empty;
+            if (VehicleTypeID.HasValue)
+            {
+                var model = new VehicleTypeMaster() { VehicleTypeID = VehicleTypeID };
+
+                clsSession cSession = new clsSession();
+                VehicleTypeMasterProvider uProvider = new VehicleTypeMasterProvider();
+                model = uProvider.GetDetails(model, cSession, out ReturnMessage);
+                cSession.Dispose();
+
+                if (ReturnMessage == "Success")
+                {
+                    if (!string.IsNullOrEmpty(model.VehicleTypeCode))
+                    {
+                        TempData["WB_VehicleTypeMaster"] = model;
+                        return RedirectToAction("Details");
+                    }
+                }
+                else
+                {
+                    if (ReturnMessage == "ExecutionTimeoutExpired")
+                    {
+                        TempData["WarningMessage"] = "The timeout period elapsed prior to completion of the operation, or the server is taking too long to respond. <b>Please try again in few moments.</b><br/>If the problem persists then please contact to the system administrator.";
+                    }
+                    else if (ReturnMessage == "ServerErrorOccurred")
+                    {
+                        TempData["ErrorMessage"] = "The server encountered an internal error and was unable to complete your request. <b>Please try again.</b><br/>If the problem persists then please contact to the system administrator.";
+                    }
+                    else
+                    {
+                        TempData["ErrorMessage"] = ReturnMessage;
+                    }
+                }
+            }
+            return RedirectToAction("Index");
+        }
+
+        [HttpGet]
+        [AuthorizeWithSession(AreaName = "WB", ControllerName = "VehicleTypeMaster", ActionType = CRUD.Details, MakeLog = true)]
+        public ActionResult Details()
+        {
+            var model = new VehicleTypeMaster();
+            if (TempData["WB_VehicleTypeMaster"] != null)
+            {
+                model = (VehicleTypeMaster)TempData["WB_VehicleTypeMaster"];
+                model = EditUpdate(model, "EditDetails");
+                return View("Create", model);
+            }
+            return RedirectToAction("Index");
+        }
+
+
+        [HttpGet]
+        [AuthorizeWithSession(AreaName = "WB", ControllerName = "VehicleTypeMaster", ActionType = CRUD.Create, MakeLog = true)]
+        public ActionResult Create()
+        {
+            var model = new VehicleTypeMaster();
+            model = EditUpdate(model, "Create");
+            return View(model);
+        }
+
+        private VehicleTypeMaster EditUpdate(VehicleTypeMaster model, string ActionType)
+        {
+          
+
+            if (ActionType == "Create")
+            {
+                ViewBag.ShortcutKeys = "Shortcut Keys:&nbsp;&nbsp;&nbsp;&nbsp;F9-Save&nbsp;&nbsp;&nbsp;&nbsp;F7-Reset&nbsp;&nbsp;&nbsp;&nbsp;F2-Back";
+                ViewBag.Update = "Save";
+                ViewBag.Action = "Create";
+            }
+            else if (ActionType == "EditDetails")
+            {
+                ViewBag.ShortcutKeys = "Shortcut Keys:&nbsp;&nbsp;&nbsp;&nbsp;F9-Update&nbsp;&nbsp;&nbsp;&nbsp;F2-Back";
+                ViewBag.Update = "Update";
+                ViewBag.Action = "Edit";
+            }
+            return model;
+        }
+
+        [HttpPost]
+        [AuthorizeWithSession(AreaName = "WB", ControllerName = "VehicleTypeMaster", ActionType = CRUD.Create)]
+        public JsonResult Create(VehicleTypeMaster model)
+        {
+            string ReturnMessage = string.Empty;
+            try
+            {
+                if (ModelState.IsValid)
+                {
+                    clsSession cSession = new clsSession();
+                    clsReturnMessage cMsg = new clsReturnMessage();
+                    VehicleTypeMasterProvider uProvider = new VehicleTypeMasterProvider();
+                    cMsg = uProvider.SaveRecord(model, cSession, cMsg);
+                    cSession.Dispose();
+                    ReturnMessage = cMsg.ReturnMessage;
+                    if (ReturnMessage == "Saved")
+                    {
+                        ModelState.Clear();
+                        TempData["SuccessMessage"] = "Vehicle Saved Successfully.";
+                    }
+                    else if (ReturnMessage == "Exists")
+                    {
+                        TempData["WarningMessage"] = "Vehicle Already Exists.";
+                    }
+                    else
+                    {
+                        TempData["ErrorMessage"] = ReturnMessage;
+                    }
+                   
+                }
+                else
+                {
+                    ReturnMessage = "Please review the following warning.";
+                    foreach (ModelState modelState in ViewData.ModelState.Values)
+                    {
+                        foreach (ModelError error in modelState.Errors)
+                        {
+                            ReturnMessage = ReturnMessage + "<br />" + error.ErrorMessage;
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                new clsLogProvider().AddToLog_Error((int?)null, ex.Message, "WB_Controller_VehicleTypeMaster", "Create");
+                ReturnMessage = Debugger.IsAttached ? Convert.ToString(ex.Message) : "ServerErrorOccurred";
+            }
+            return Json(ReturnMessage);
+        }
+
+        [HttpPost]
+        [AuthorizeWithSession(AreaName = "WB", ControllerName = "VehicleTypeMaster", ActionType = CRUD.Update)]
+        public JsonResult Edit(VehicleTypeMaster model)
+        {
+            string ReturnMessage = string.Empty;
+            try
+            {
+                if (ModelState.IsValid)
+                {
+                    clsSession cSession = new clsSession();
+                    clsReturnMessage cMsg = new clsReturnMessage();
+                    VehicleTypeMasterProvider uProvider = new VehicleTypeMasterProvider();
+                    cMsg = uProvider.UpdateRecord(model, cSession, cMsg);
+                    cSession.Dispose();
+                    ReturnMessage = cMsg.ReturnMessage;
+
+                    if (ReturnMessage == "Updated")
+                    {
+                        ModelState.Clear();
+                        TempData["SuccessMessage"] = "Vehicle Updated Successfully.";
+                    }
+                    else if (ReturnMessage == "Exists")
+                    {
+                        TempData["WarningMessage"] = "Vehicle Already Exists.";
+                    }
+                    else
+                    {
+                        TempData["ErrorMessage"] = ReturnMessage;
+                    }
+                }
+                else
+                {
+                    ReturnMessage = "Please review the following warning.";
+                    foreach (ModelState modelState in ViewData.ModelState.Values)
+                    {
+                        foreach (ModelError error in modelState.Errors)
+                        {
+                            ReturnMessage = ReturnMessage + "<br />" + error.ErrorMessage;
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                new clsLogProvider().AddToLog_Error((int?)null, ex.Message, "HR_Controller_ShiftMaster", "Edit");
+                ReturnMessage = Debugger.IsAttached ? Convert.ToString(ex.Message) : "ServerErrorOccurred";
+            }
+            return Json(ReturnMessage);
+        }
+
+        public ActionResult Delete(int? VehicleTypeID)
+        {
+            string ReturnMessage = "ModelInvalid";
+            if (VehicleTypeID.HasValue)
+            {
+                clsSession cSession = new clsSession();
+                clsReturnMessage cMsg = new clsReturnMessage();
+                VehicleTypeMasterProvider uProvider = new VehicleTypeMasterProvider();
+                cMsg = uProvider.DeleteRecord(VehicleTypeID, cSession, cMsg);
+                cSession.Dispose();
+                ReturnMessage = cMsg.ReturnMessage;
+            }
+            return Json(ReturnMessage);
+        }
+        
+    }
+}
+
+
+
+===================================================================================entity=====================
+using System;
+using System.ComponentModel.DataAnnotations;
+
+namespace QuraERP.Entity.WB
+{
+    public class VehicleTypeMaster
+    {
+        [Display(Name = "Code")]
+        public string VehicleTypeCode { get; set; }
+        public int? VehicleTypeID { get; set; }
+
+        [Display(Name = "VehicleType")]
+        [Required(ErrorMessage = "Vehicle Type Name is Required.")]
+        public string VehicleTypeName { get; set; }
+
+        //Used For Index Page
+        public int TotalRecords { get; set; }
+        public int RowID { get; set; }
+        public bool CanUpdate { get; set; }
+        public bool CanDelete { get; set; }
+
+        public bool IsDefault { get; set; }
+        [Display(Name = "Created By")]
+        public string CreatedBy { get; set; }
+    }
+
+}
+=================================================================================index=======================
+@{
+    ViewBag.Title = "VehicleType Master";
+    Layout = "~/Views/Shared/_LayoutV3.cshtml";
+}
+
+<div class="breadcrumbs">
+    <div class="btntopheader">
+        <a href="@Url.Action("Create", "VehicleTypeMaster", new { area = "WB" })">
+            <i class="fa fa-plus-circle fa-fw">
+            </i>&nbsp;Add Vehicle
+        </a>
+    </div>
+    <ul>
+        <li><a>WeighBridge</a><i class="fa fa-angle-right"></i></li>
+        <li><a>Settings</a><i class="fa fa-angle-right"></i></li>
+        <li><a>Vehicle Type Master</a></li>
+    </ul>
+</div>
+<div class="col-sm-12 box box-bordered box-color nopadding">
+    <div class="box-content nopadding theme-border-top" style="margin:1px;">
+        <!-- Table for jQuery DataTable -->
+        <table id="WB-VehicleTypeMaster-IndexGrid" class="table table-hover table-striped table-condensed-dataTable indexTable dataTable dataTable-column_filter"
+               data-column_filter_types="null,null,text,text,null,null">
+            
+            <thead>
+                <tr>
+                    <th>SN</th>
+                    <th>VehicleTypeID</th>
+                    <th>Code</th>
+                    <th>Vehicle Type Name</th>
+                    <th>Created By</th>
+                    <th></th>
+                </tr>
+            </thead>
+
+        </table>
+
+        <!-- Alert Notifications -->
+        <div>
+            @if (TempData["ErrorMessage"] != null)
+            {
+                <div class="alert alert-danger alert-bottom alert-dismissable">
+                    <button type="button" class="close btn-close-auto " data-dismiss="alert"><i class="fa fa-times-circle-o"></i></button>
+                    <strong>Error!</strong>&nbsp;&nbsp;&nbsp;@Html.Raw(TempData["ErrorMessage"])
+                </div>
+            }
+            @if (TempData["WarningMessage"] != null)
+            {
+                <div class="alert alert-warning alert-bottom alert-dismissable">
+                    <button type="button" class="close btn-close-auto" data-dismiss="alert"><i class="fa fa-times-circle-o"></i></button>
+                    <strong>Warning!</strong>&nbsp;&nbsp;&nbsp;@Html.Raw(TempData["WarningMessage"])
+                </div>
+            }
+            @if (TempData["SuccessMessage"] != null)
+            {
+                <div class="alert alert-success alert-bottom alert-dismissable">
+                    <button type="button" class="close btn-close-auto" data-dismiss="alert"><i class="fa fa-times-circle-o"></i></button>
+                    <strong>Success!</strong>&nbsp;&nbsp;&nbsp;@Html.Raw(TempData["SuccessMessage"])
+                </div>
+            }
+        </div>
+    </div>
+</div>
+<div id="ControllerUrl" data-request-url="@Url.Action("ActionName", "VehicleTypeMaster", new { area = "WB" })"></div>
+
+@section scripts{
+    @Scripts.Render("~/Scripts/WB/VehicleTypeMaster")
+    <script type="text/javascript">
+    $(document).ready(function () {
+        OnIndexPageLoad();
+    });
+    </script>
+}
+
+==========================================================Create===========================
+@model QuraERP.Entity.WB.VehicleTypeMaster
+
+@{
+    ViewBag.Title = "Vehicle Type Master";
+    Layout = "~/Views/Shared/_LayoutV3.cshtml";
+}
+
+<div class="breadcrumbs">
+    <div class="btntopheader">
+        <a href="@Url.Action("Index", "VehicleTypeMaster", new { area = "WB" })"><i class="fa fa-arrow-circle-left"></i>&nbsp;Back</a>
+    </div>
+    <ul>
+        <li><a>WeighBridge</a><i class="fa fa-angle-right"></i></li>
+        <li><a>Settings</a><i class="fa fa-angle-right"></i></li>
+        <li><a>Vehicle Type Master</a></li>
+    </ul>
+</div>
+<div class="col-sm-12 box box-bordered nopadding">
+    <div class="box-content no-border" style="padding:1px;">
+        @using (Ajax.BeginForm((string)ViewBag.Action, "VehicleTypeMaster", new { area = "WB" }, new AjaxOptions { OnSuccess = "OnSuccessMainForm", OnFailure = "OnErrorMainForm", HttpMethod = "Post" }, new { id = "frmMain", @class = "form-validate", autocomplete = "off" }))
+        {
+            @Html.HiddenFor(m => m.VehicleTypeID)
+            @Html.HiddenFor(m => m.CanUpdate)
+
+            <div id="divMainContent" class="col-sm-12 nopadding div-grey" style="overflow-y:auto;">
+                <div class="col-sm-4 nopadding">
+
+                </div>
+                <div class="box box-bordered box-color col-sm-4 nopadding">
+                    <div class="box-content nopadding theme-border-top ">
+                        <div class="form-horizontal form-column form-bordered">
+                            <div class="col-sm-12 nopadding no-border-left">
+                                <div class="form-group">
+                                    @Html.LabelFor(m => m.VehicleTypeCode, new { @class = "control-label right col-sm-3" })
+                                    <div class="col-sm-9">
+                                        <span class="form-control input-sm font-bold">
+                                            @if (ViewBag.Action == "Create")
+                                            {
+                                                @:New
+                                            }
+                                            else
+                                            {
+                                                @Html.HiddenFor(m => m.VehicleTypeCode)
+                                                @Html.DisplayFor(m => m.VehicleTypeCode)
+                                            }
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-sm-12 nopadding no-border-left">
+                                <div class="form-group required">
+                                    @Html.LabelFor(m => m.VehicleTypeName, new { @class = "control-label right col-sm-3" })
+                                    <div class="col-sm-9">
+                                        @Html.TextBoxFor(m => m.VehicleTypeName, null, new { placeholder = "Vehicle Type Name", @class = "form-control input-sm font-bold" })
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-sm-4 nopadding ">
+
+                </div>
+                <div class="col-sm-12 nopadding div-grey">
+                    @if (TempData["ErrorMessage"] != null)
+                    {
+                        <div class="alert alert-danger alert-dismissable">
+                            <button type="button" class="close" data-dismiss="alert"><i class="fa fa-times-circle-o"></i></button>
+                            <strong>Error!</strong>&nbsp;&nbsp;&nbsp;@Html.Raw(TempData["ErrorMessage"])
+                        </div>
+                    }
+                    @if (TempData["WarningMessage"] != null)
+                    {
+                        <div class="alert alert-warning alert-dismissable">
+                            <button type="button" class="close" data-dismiss="alert"><i class="fa fa-times-circle-o"></i></button>
+                            <strong>Warning!</strong>&nbsp;&nbsp;&nbsp;@Html.Raw(TempData["WarningMessage"])
+                        </div>
+                    }
+                    @if (TempData["SuccessMessage"] != null)
+                    {
+                        <div class="alert alert-success alert-dismissable">
+                            <button type="button" class="close" data-dismiss="alert"><i class="fa fa-times-circle-o"></i></button>
+                            <strong>Success!</strong>&nbsp;&nbsp;&nbsp;@Html.Raw(TempData["SuccessMessage"])
+                        </div>
+                    }
+                </div>
+            </div>
+            <div class="col-sm-12 box box-bordered box-color nopadding">
+                <div class="box-content nopadding theme-border-top">
+                    <div class='form-horizontal form-column form-bordered'>
+                        <div class="col-sm-12 nopadding">
+                            <div class="form-group no-border-bottom">
+                                <div class="col-sm-5 div-grey no-border-left" style="height:28px;">
+
+                                </div>
+                                <div class="col-sm-1">
+                                    <input type="submit" value="@ViewBag.Update" id="btnMainSubmit" class="btn btn-primary btn-small form-control input-sm" />
+                                </div>
+                                @if (ViewBag.Action == "Create")
+                                {
+                                    <div class="col-sm-1">
+                                        <input type="button" value="Reset" id="btnCreateReset" class="btn btn-primary btn-small form-control input-sm" />
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="col-sm-1">
+                                        <input type="button" value="Back to List" id="btnBackToList" class="btn btn-primary btn-small form-control input-sm" />
+                                    </div>
+                                }
+                                <div class="col-sm-5 div-grey" style="height:28px;">
+
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+<div id="ControllerUrl" data-request-url="@Url.Action("ActionName", "VehicleTypeMaster", new { area = "WB" })"></div>
+
+@section scripts{
+    @Scripts.Render("~/Scripts/WB/VehicleTypeMaster")
+    <script type="text/javascript">
+    $(document).ready(function () {
+        OnCreatePageLoad('@ViewBag.Action');
+    });
+    </script>
+}
+===========================================================js==========
+var IsSubmitted = false;
+var IsPopupOpen = false;
+
+/* Functions for Index Page */
+
+
+function OnIndexPageLoad() {
+    $('#WB-VehicleTypeMaster-IndexGrid').dataTable({
+        "dom": '<"top"<"clear">><rt><"bottom row"<"col-sm-4 nopadding"l><"col-sm-4 nopadding text-center"i><"col-sm-4 nopadding"p><"clear">>',
+        "aLengthMenu": [25, 50, 100, 200, 500],
+        "pageLength": 25,
+        "serverSide": true,
+        "processing": true,
+        "stateSave": true,
+        "stateDuration": stateDurationTime,
+        "pagingType": "input",
+        "ajax": {
+            url: GenerateControllerActionUrl('PopulateGrid'),
+            type: "POST",
+            "dataSrc": function (response) {
+                if (response.ReturnMessage !== "Success") {
+                    ShowServerErrorAlert({
+                        message: response.ReturnMessage
+                    });
+                }
+                return response.data;
+            },
+            error: AjaxFunctionError,
+            complete: function () {
+                $("#WB-VehicleTypeMaster-IndexGrid").dataTable().fnProcessingIndicator(false);
+            }
+        },
+        "destroy": true,
+        "language": {
+            "infoFiltered": "",
+            "processing": ""
+        },
+        "sScrollY": calc_indexTableHeight('WB-VehicleTypeMaster-IndexGrid'),
+        "order": [[3, "asc"]],
+        "columns": [
+            { "data": "RowID", "orderable": false, width: "3%" },
+            { "data": "VehicleTypeID", "visible": false, "orderable": false },
+            {
+                "data": "VehicleTypeCode", "title": "Code", "sClass": "font-bold", width: "10%",
+                mRender: function (data, type, row) {
+                    return '<span style="color:blue;cursor:pointer;" title="Click to Open Details" onclick="EditDetails(' + "'" + row.VehicleTypeID + "'" + ');">' + data + '</span>'
+                }
+            },
+            { "data": "VehicleTypeName" },
+            { "data": "CreatedBy", "width": "15%", "orderable": false },
+            {
+                "data": "CanDelete", "orderable": false, "width": "1%",
+                mRender: function (data, type, row) {
+                    if (row.CanDelete == true) {
+                        return '<i class="ui-tooltip fa fa-trash-o" style="font-size:20px; cursor:pointer; color:#ff0101;" title="Click to Delete" onclick="DeleteData(' + "'" + row.VehicleTypeID + "','" + row.VehicleTypeName + "'" + ');"></i>'
+                    }
+                    else {
+                        return ''
+                    }
+                }
+            }
+        ],
+        "footerCallback": function (row, data, start, end, display) {
+            setTimeout(function () { resize_indexTableHeight(); }, 10);
+        },
+        "fnInitComplete": function () {
+            DataTableFilterValue('WB-VehicleTypeMaster-IndexGrid', this.api());
+        }
+    });
+    $(document).on("keydown", function (e) {
+        if (e.which === 113) { //For F2
+            e.preventDefault();
+            window.location.href = GenerateControllerActionUrl('Create');
+        }
+    });
+}
+
+function EditDetails(VehicleTypeID) {
+    window.location.href = GenerateControllerActionUrl('EditDetails') + "?VehicleTypeID=" + VehicleTypeID;
+}
+
+function DeleteData(VehicleTypeID, VehicleTypeName) {
+    if (IsPopupOpen == false) {
+        IsPopupOpen = true;
+
+        ShowConfirmationAlert({
+            message: 'Do you really want to delete the <b>"' + VehicleTypeName + '"</b>? This action cannot be undone.',
+            callback: function (result) {
+                if (result.value) {
+                    showLoader();
+                    setTimeout(function () { DeleteRecord(VehicleTypeID); }, 1);
+                }
+                else {
+                    IsPopupOpen = false;
+                }
+            }
+        });
+    }
+}
+
+function DeleteRecord(VehicleTypeID) {
+    try {
+        var modelData = {
+            VehicleTypeID: VehicleTypeID
+        };
+        $.ajax({
+            url: GenerateControllerActionUrl('Delete'),
+            type: "POST",
+            dataType: "json",
+            contentType: 'application/json',
+            async: false,
+            cache: false,
+            data: JSON.stringify(modelData),
+            async: false,
+            cache: false,
+            dataType: "json",
+            success: function (result) {
+                if (result == 'Deleted') {
+                    $('#WB-VehicleTypeMaster-IndexGrid').dataTable().fnDraw();
+
+                    ShowAlertNotification({
+                        type: 'success',
+                        title: 'Success Message',
+                        message: 'Vehicle Successfully Deleted.',
+                        timer: 6000
+                    });
+                }
+                else if (result == "NotExists") {
+                    ShowAlertNotification({
+                        type: 'warning',
+                        title: 'Warning Message',
+                        message: 'VehicleTypeID does not exists in the system.'
+                    });
+                }
+                else if (result == "ModelInvalid") {
+                    ShowAlertNotification({
+                        type: 'warning',
+                        title: 'Warning Message',
+                        message: 'VehicleTypeID is required to delete. Please try again.<br\>If the problem persists then please contact the system administrator.'
+                    });
+                }
+                else {
+                    ShowServerErrorAlert({
+                        message: result
+                    });
+                }
+            },
+            error: AjaxFunctionError
+        });
+    }
+    catch (err) {
+        TraceKit.report(err);
+    }
+    finally {
+        closeLoader();
+        IsPopupOpen = false;
+    }
+}
+
+/* Functions for Create Page */
+function OnCreatePageLoad(PageMode) {
+  
+
+    /* Main Click Events */
+    $("#btnMainSubmit").click(function (e) {
+        e.preventDefault();
+        if (!IsPopupOpen && IsSubmitted == false && !($("#btnMainSubmit").is(':disabled'))) {
+            IsSubmitted = true;
+
+            showLoader();
+            if ($("#btnMainSubmit").is(':focus')) {
+                setTimeout(function () { SubmitForm(PageMode); }, 1);
+            }
+            else {
+                $("#btnMainSubmit").focus();
+                setTimeout(function () { SubmitForm(PageMode); }, 10);
+            }
+        }
+        return false;
+    });
+
+    $("#btnCreateReset, #btnBackToList").click(function (e) {
+        e.preventDefault();
+        RedirectToPage($(this).attr('id').substring(3));
+        return false;
+    });
+
+    $(document).on("keydown", function (e) {
+        if (e.which === 120) { //For F9-Save                
+            e.preventDefault();
+            if (!IsPopupOpen && IsSubmitted == false && !($("#btnMainSubmit").is(':disabled'))) {
+                IsSubmitted = true;
+
+                showLoader();
+                if ($("#btnMainSubmit").is(':focus')) {
+                    setTimeout(function () { SubmitForm(PageMode); }, 1);
+                }
+                else {
+                    $("#btnMainSubmit").focus();
+                    setTimeout(function () { SubmitForm(PageMode); }, 10);
+                }
+            }
+        }
+        else if (e.which === 118) { //For F7-Reset                
+            e.preventDefault();
+            if (!IsPopupOpen && PageMode == 'Create') {
+                RedirectToPage('CreateReset');
+            }
+        }
+        else if (e.which === 113) { //For F2
+            e.preventDefault();
+            if (!IsPopupOpen) {
+                window.location.href = GenerateControllerActionUrl('Index');
+            }
+        }
+    });
+
+    /* Execute on Page Load */
+    $("#divMainContent").css('height', ($(window).height() - 121) < 300 ? 300 : ($(window).height() - 121));
+    $("#divMainContent").css('max-height', ($(window).height() - 121) < 300 ? 300 : ($(window).height() - 121));
+
+    
+    if (PageMode == 'Edit') {
+        /* For CanUpdate */
+        if ($("#CanUpdate").val().toLowerCase() == 'false') {
+            $("#frmMain :input").attr("disabled", "disabled");
+            $("#btnBackToList").removeAttr("disabled");
+        }
+    }
+    setTimeout(function () { $("#VehicleTypeName").focus(); }, 1);
+}
+
+function SubmitForm(PageMode) {
+    var bFlag = false;
+    try {
+        if ($("#frmMain").valid()) {
+            if (PageMode == 'Edit') {
+                bFlag = true;
+
+                ShowConfirmationAlert({
+                    message: 'Do you really want to Update?',
+                    callback: function (result) {
+                        if (result.value) {
+                            showLoader();
+                            setTimeout(function () { $("#frmMain").submit(); }, 1);
+                        }
+                        else {
+                            IsSubmitted = false;
+                        }
+                    }
+                });
+            }
+            else {
+                bFlag = true;
+                $("#frmMain").submit();
+            }
+        }
+        else {
+            ShowToastNotification({
+                type: 'warning',
+                title: 'Please provide all the required field to submit the form.',
+            });
+            setTimeout(function () { $('#frmMain .input-validation-error').filter(":enabled:visible:first").focus(); }, 1);
+        }
+    }
+    catch (err) {
+        TraceKit.report(err);
+    }
+    finally {
+        if (bFlag == false) {
+            closeLoader();
+            IsSubmitted = false;
+        }
+        else if (PageMode == 'Edit' && bFlag == true) {
+            closeLoader();
+        }
+    }
+}
+
+function OnSuccessMainForm(data) {
+    try {
+        if (data == 'Saved') {
+            window.location.href = GenerateControllerActionUrl('Create');
+        }
+        else if (data == 'Updated') {
+            window.location.href = GenerateControllerActionUrl('Index');
+        }
+        else {
+            closeLoader();
+            IsSubmitted = false;
+
+            var LocalSplittedData = null;
+            if (data == "Exists") {
+                ShowAlertNotification({
+                    type: 'warning',
+                    title: 'Duplicate Entry',
+                    message: 'Vehicle Name already exists in the system.'
+                });
+            }
+            else if (data == "NotExists") {
+                ShowAlertNotification({
+                    type: 'warning',
+                    title: 'Warning Message',
+                    message: 'VehicleTypeID does not exists in the system.'
+                });
+            }
+            //else if (data == 'NULLList') {
+            //    ShowAlertNotification({
+            //        type: 'warning',
+            //        title: 'Warning Message',
+            //        message: 'Weekly Off Days List should not be null, Please try again.'
+            //    });
+            //}
+            else if (data.toLowerCase().indexOf("please review the following warning") >= 0) {
+                ShowAlertNotification({
+                    type: 'warning',
+                    title: 'Form Validation Failed',
+                    message: data
+                });
+            }
+            else {
+                ShowServerErrorAlert({
+                    message: data
+                });
+            }
+        }
+    }
+    catch (err) {
+        TraceKit.report(err);
+    }
+}
+
+function OnErrorMainForm(xWB, status, err) {
+    closeLoader();
+    IsSubmitted = false;
+    AjaxFunctionError(xWB, status, err);
+}
+
+function RedirectToPage(ActionType) {
+    if (ActionType == 'CreateReset') {
+        ShowConfirmationAlert({
+            message: 'Are you sure want to reset the page?',
+            callback: function (result) {
+                if (result.value) {
+                    window.location.href = GenerateControllerActionUrl('Create');
+                }
+            }
+        });
+    }
+    else {
+        window.location.href = GenerateControllerActionUrl('Index');
+    }
+    return false;
+}
+
+
+================================================================================provider==
+using System;
+using System.Collections.Generic;
+using QuraERP.Entity.Common;
+using QuraERP.Entity.WB;
+using QuraERP.DAO.WB;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace QuraERP.Provider.WB
+{
+    public class VehicleTypeMasterProvider
+    {
+        public List<VehicleTypeMaster> PopulateGrid(List<VehicleTypeMaster> lst, VehicleTypeMaster model, DataTableParameter DTParameter, clsSession cSession, string PopulateType, out string ReturnMessage)
+        {
+            VehicleTypeMasterDAO dao = new VehicleTypeMasterDAO();
+            lst = dao.PopulateGrid(lst, model, DTParameter, cSession, PopulateType, out ReturnMessage);
+            return lst;
+        }
+
+        public VehicleTypeMaster GetDetails(VehicleTypeMaster model, clsSession cSession, out string ReturnMessage)
+        {
+            VehicleTypeMasterDAO dao = new VehicleTypeMasterDAO();
+            model = dao.GetDetails(model, cSession, out ReturnMessage);
+            return model;
+        }
+
+        public clsReturnMessage SaveRecord(VehicleTypeMaster model,  clsSession cSession, clsReturnMessage cMsg)
+        {
+            VehicleTypeMasterDAO dao = new VehicleTypeMasterDAO();
+            cMsg = dao.SaveRecord(model,  cSession, cMsg);
+            return cMsg;
+        }
+
+        public clsReturnMessage UpdateRecord(VehicleTypeMaster model, clsSession cSession, clsReturnMessage cMsg)
+        {
+            VehicleTypeMasterDAO dao = new VehicleTypeMasterDAO();
+            cMsg = dao.UpdateRecord(model, cSession, cMsg);
+            return cMsg;
+        }
+
+        public clsReturnMessage DeleteRecord(int? VehicleTypeID, clsSession cSession, clsReturnMessage cMsg)
+        {
+            VehicleTypeMasterDAO dao = new VehicleTypeMasterDAO();
+            cMsg = dao.DeleteRecord(VehicleTypeID, cSession, cMsg);
+            return cMsg;
+        }
+    }
+}
+
+================================================DAO==============
+
+using System;
+using System.Collections.Generic;
+using System.Data;
+using System.Data.SqlClient;
+using System.Diagnostics;
+using System.Threading;
+using QuraERP.DAO.Common;
+using QuraERP.Entity.Common;
+using QuraERP.Entity.WB;
+
+namespace QuraERP.DAO.WB
+{
+   public class VehicleTypeMasterDAO
+    {
+        public List<VehicleTypeMaster> PopulateGrid(List<VehicleTypeMaster> lst, VehicleTypeMaster model, DataTableParameter DTParameter, clsSession cSession, string PopulateType, out string ReturnMessage)
+        {
+            DBConnect con = new DBConnect();
+            try
+            {
+                using (SqlCommand cmd = new SqlCommand())
+                {
+                    cmd.CommandType = CommandType.StoredProcedure;
+                    cmd.CommandText = "usp_WB_Settings_VehicleTypeMaster_PopulateGrid";
+                    cmd.Parameters.AddWithValue("@StartRowNo", DTParameter.StartRowNo);
+                    cmd.Parameters.AddWithValue("@EndRowNo", DTParameter.EndRowNo);
+                    if (string.IsNullOrEmpty(DTParameter.SortColumn))
+                    {
+                        cmd.Parameters.AddWithValue("@SortColumn", DBNull.Value);
+                    }
+                    else
+                    {
+                        cmd.Parameters.AddWithValue("@SortColumn", DTParameter.SortColumn);
+                    }
+                    if (string.IsNullOrEmpty(DTParameter.SortDirection))
+                    {
+                        cmd.Parameters.AddWithValue("@SortDirection", DBNull.Value);
+                    }
+                    else
+                    {
+                        cmd.Parameters.AddWithValue("@SortDirection", DTParameter.SortDirection);
+                    }
+                    if (string.IsNullOrEmpty(model.VehicleTypeCode))
+                    {
+                        cmd.Parameters.AddWithValue("@VehicleTypeCode", DBNull.Value);
+                    }
+                    else
+                    {
+                        cmd.Parameters.AddWithValue("@VehicleTypeCode", model.VehicleTypeCode.Trim());
+                    }
+                    if (string.IsNullOrEmpty(model.VehicleTypeName))
+                    {
+                        cmd.Parameters.AddWithValue("@VehicleTypeName", DBNull.Value);
+                    }
+                    else
+                    {
+                        cmd.Parameters.AddWithValue("@VehicleTypeName", model.VehicleTypeName.Trim());
+                    }
+                    cmd.Parameters.AddWithValue("@PopulateType", PopulateType);
+                    cmd.Parameters.AddWithValue("@LoginID", cSession.UID);
+                    cmd.Parameters.AddWithValue("@CompanyID", cSession.CompanyID);
+                    con.OpenConnection();
+                    cmd.Connection = con.Connection;
+                    using (SqlDataReader dr = cmd.ExecuteReader())
+                    {
+                        if (PopulateType == "SelectList" || PopulateType == "SelectListWithAll")
+                        {
+                            while (dr.Read())
+                            {
+                                lst.Add(new VehicleTypeMaster
+                                {
+                                    VehicleTypeID = Convert.ToInt32(dr["VehicleTypeID"]),
+                                    VehicleTypeName = Convert.ToString(dr["VehicleTypeName"])
+                                });
+                            }
+                        }
+                        else
+                        {
+                            while (dr.Read())
+                            {
+                                lst.Add(new VehicleTypeMaster
+                                {
+                                    TotalRecords = Convert.ToInt32(dr["TotalRecords"]),
+                                    RowID = Convert.ToInt32(dr["RowID"]),
+                                    VehicleTypeID = Convert.ToInt32(dr["VehicleTypeID"]),
+                                    VehicleTypeCode = Convert.ToString(dr["VehicleTypeCode"]),
+                                    VehicleTypeName = Convert.ToString(dr["VehicleTypeName"]),
+                                    CreatedBy = Convert.ToString(dr["CreatedBy"]),
+                                    CanDelete = Convert.ToBoolean(dr["CanDelete"])
+                                });
+                            }
+                        }
+                    }
+                    ReturnMessage = "Success";
+                }
+            }
+            catch (SqlException ex)
+            {
+                using (clsLog mLog = new clsLog())
+                {
+                    mLog.AddToLog_Error(cSession.SessionLogID, Convert.ToString(ex.Message), "WB_VehicleTypeMasterDAO", "PopulateGrid");
+                }
+                ReturnMessage = Debugger.IsAttached ? Convert.ToString(ex.Message) : (ex.Number == -2 ? "ExecutionTimeoutExpired" : "ServerErrorOccurred");
+            }
+            catch (Exception ex)
+            {
+                using (clsLog mLog = new clsLog())
+                {
+                    mLog.AddToLog_Error(cSession.SessionLogID, Convert.ToString(ex.Message), "WB_VehicleTypeMasterDAO", "PopulateGrid");
+                }
+                ReturnMessage = Debugger.IsAttached ? Convert.ToString(ex.Message) : "ServerErrorOccurred";
+            }
+            finally
+            {
+                con.CloseConnection();
+                con.Dispose();
+            }
+            return lst;
+        }
+
+        public VehicleTypeMaster GetDetails(VehicleTypeMaster model, clsSession cSession, out string ReturnMessage)
+        {
+            DBConnect con = new DBConnect();
+            try
+            {
+                using (SqlCommand cmd = new SqlCommand())
+                {
+                    cmd.CommandType = CommandType.StoredProcedure;
+                    cmd.CommandText = "usp_WB_Settings_VehicleTypeMaster_GetDetails";
+                    cmd.Parameters.AddWithValue("@VehicleTypeID", model.VehicleTypeID);
+                    cmd.Parameters.AddWithValue("@LoginID", cSession.UID);
+                    cmd.Parameters.AddWithValue("@CompanyID", cSession.CompanyID);
+                    con.OpenConnection();
+                    cmd.Connection = con.Connection;
+                    using (SqlDataReader dr = cmd.ExecuteReader())
+                    {
+                        while (dr.Read())
+                        {
+                            model.VehicleTypeID = Convert.ToInt32(dr["VehicleTypeID"]);
+                            model.VehicleTypeCode = Convert.ToString(dr["VehicleTypeCode"]);
+                            model.VehicleTypeName = Convert.ToString(dr["VehicleTypeName"]);
+                            model.CanUpdate = Convert.ToBoolean(dr["CanUpdate"]);
+                        }
+                    }
+                    ReturnMessage = "Success";
+                }
+            }
+            catch (SqlException ex)
+            {
+                using (clsLog mLog = new clsLog())
+                {
+                    mLog.AddToLog_Error(cSession.SessionLogID, Convert.ToString(ex.Message), "WB_VehicleTypeMasterDAO", "GetDetails");
+                }
+                ReturnMessage = Debugger.IsAttached ? Convert.ToString(ex.Message) : (ex.Number == -2 ? "ExecutionTimeoutExpired" : "ServerErrorOccurred");
+            }
+            catch (Exception ex)
+            {
+                using (clsLog mLog = new clsLog())
+                {
+                    mLog.AddToLog_Error(cSession.SessionLogID, Convert.ToString(ex.Message), "WB_VehicleTypeMasterDAO", "GetDetails");
+                }
+                ReturnMessage = Debugger.IsAttached ? Convert.ToString(ex.Message) : "ServerErrorOccurred";
+            }
+            finally
+            {
+                con.CloseConnection();
+                con.Dispose();
+            }
+            return model;
+        }
+
+        
+        public clsReturnMessage SaveRecord(VehicleTypeMaster model, clsSession cSession, clsReturnMessage cMsg)
+        {
+            DBConnect con = new DBConnect();
+            SqlTransaction ObjTran = null;
+            SqlParameter nReturnMessage = new SqlParameter();
+
+            int RetryCounter = 3;
+            do
+            {
+                try
+                {
+                    using (SqlCommand cmd = new SqlCommand())
+                    {
+                        cmd.CommandType = CommandType.StoredProcedure;
+                        cmd.CommandText = "usp_WB_Settings_VehicleTypeMaster_Add";
+                        cmd.Parameters.AddWithValue("@VehicleTypeName", model.VehicleTypeName.Trim().ToUpper());
+                        cmd.Parameters.AddWithValue("@SessionLogID", cSession.SessionLogID);
+                        cmd.Parameters.AddWithValue("@LoginID", cSession.UID);
+                        cmd.Parameters.AddWithValue("@CompanyID", cSession.CompanyID);
+                        nReturnMessage = cmd.Parameters.Add("@ReturnMessage", SqlDbType.VarChar, 50);
+                        nReturnMessage.Direction = ParameterDirection.Output;
+                        con.OpenConnection();
+                        cmd.Connection = con.Connection;
+                        ObjTran = con.BeginTransaction();
+                        cmd.Transaction = ObjTran;
+                        cmd.ExecuteNonQuery();
+                        cMsg.ReturnMessage = Convert.ToString(nReturnMessage.Value);
+
+                        //Commit Transaction
+                        if (cMsg.ReturnMessage == "Saved")
+                        {
+                            ObjTran.Commit();
+                            RetryCounter = 0;
+                        }
+                        else
+                        {
+                            ObjTran.Rollback();
+                            RetryCounter = 0;
+                        }
+                    }
+                }
+                catch (SqlException ex)
+                {
+                    if (ObjTran != null)
+                    {
+                        ObjTran.Rollback();
+                    }
+
+                    if ((ex.Number == 1205 || ex.Number == 2627) && (RetryCounter > 1))
+                    {
+                        RetryCounter = RetryCounter - 1;
+                        Thread.Sleep(500);
+                    }
+                    else
+                    {
+                        RetryCounter = 0;
+                        using (clsLog mLog = new clsLog())
+                        {
+                            mLog.AddToLog_Error(cSession.SessionLogID, Convert.ToString(ex.Message), "WB_VehicleTypeMasterDAO", "SaveRecord");
+                        }
+                        cMsg.ReturnMessage = Debugger.IsAttached ? Convert.ToString(ex.Message) : (ex.Number == -2 ? "ExecutionTimeoutExpired" : "ServerErrorOccurred");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    if (ObjTran != null)
+                    {
+                        ObjTran.Rollback();
+                    }
+
+                    RetryCounter = 0;
+                    using (clsLog mLog = new clsLog())
+                    {
+                        mLog.AddToLog_Error(cSession.SessionLogID, Convert.ToString(ex.Message), "WB_VehicleTypeMasterDAO", "SaveRecord");
+                    }
+                    cMsg.ReturnMessage = Debugger.IsAttached ? Convert.ToString(ex.Message) : "ServerErrorOccurred";
+                }
+                finally
+                {
+                    if (ObjTran != null)
+                    {
+                        ObjTran.Dispose();
+                    }
+                    con.CloseConnection();
+                    con.Dispose();
+                }
+            } while (RetryCounter > 0);
+            return cMsg;
+        }
+
+        public clsReturnMessage UpdateRecord(VehicleTypeMaster model,  clsSession cSession, clsReturnMessage cMsg)
+        {
+            DBConnect con = new DBConnect();
+            SqlTransaction ObjTran = null;
+            SqlParameter nReturnMessage = new SqlParameter();
+
+            int RetryCounter = 3;
+            do
+            {
+                try
+                {
+                    using (SqlCommand cmd = new SqlCommand())
+                    {
+                        cmd.CommandType = CommandType.StoredProcedure;
+                        cmd.CommandText = "usp_WB_Settings_VehicleTypeMaster_Update";
+                        cmd.Parameters.AddWithValue("@VehicleTypeID", model.VehicleTypeID);
+                        cmd.Parameters.AddWithValue("@VehicleTypeName", model.VehicleTypeName.Trim().ToUpper());
+                        cmd.Parameters.AddWithValue("@SessionLogID", cSession.SessionLogID);
+                        cmd.Parameters.AddWithValue("@CompanyID", cSession.CompanyID);
+                        nReturnMessage = cmd.Parameters.Add("@ReturnMessage", SqlDbType.VarChar, 50);
+                        nReturnMessage.Direction = ParameterDirection.Output;
+                        con.OpenConnection();
+                        cmd.Connection = con.Connection;
+                        ObjTran = con.BeginTransaction();
+                        cmd.Transaction = ObjTran;
+                        cmd.ExecuteNonQuery();
+                        cMsg.ReturnMessage = Convert.ToString(nReturnMessage.Value);
+
+                        if (cMsg.ReturnMessage == "Updated")
+                        {
+                            ObjTran.Commit();
+                            RetryCounter = 0;
+                        }
+                        else
+                        {
+                            ObjTran.Rollback();
+                            RetryCounter = 0;
+                        }
+                    }
+                }
+                catch (SqlException ex)
+                {
+                    if (ObjTran != null)
+                    {
+                        ObjTran.Rollback();
+                        RetryCounter = 0;
+                    }
+
+                    if ((ex.Number == 1205 || ex.Number == 2627) && (RetryCounter > 1))
+                    {
+                        RetryCounter = RetryCounter - 1;
+                        Thread.Sleep(500);
+                    }
+                    else
+                    {
+                        RetryCounter = 0;
+                        using (clsLog mLog = new clsLog())
+                        {
+                            mLog.AddToLog_Error(cSession.SessionLogID, Convert.ToString(ex.Message), "WB_VehicleTypeMasterDAO", "UpdateRecord");
+                        }
+                        cMsg.ReturnMessage = Debugger.IsAttached ? Convert.ToString(ex.Message) : (ex.Number == -2 ? "ExecutionTimeoutExpired" : "ServerErrorOccurred");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    if (ObjTran != null)
+                    {
+                        ObjTran.Rollback();
+                    }
+
+                    RetryCounter = 0;
+                    using (clsLog mLog = new clsLog())
+                    {
+                        mLog.AddToLog_Error(cSession.SessionLogID, Convert.ToString(ex.Message), "WB_VehicleTypeMasterDAO", "UpdateRecord");
+                    }
+                    cMsg.ReturnMessage = Debugger.IsAttached ? Convert.ToString(ex.Message) : "ServerErrorOccurred";
+                }
+                finally
+                {
+                    if (ObjTran != null)
+                    {
+                        ObjTran.Dispose();
+                    }
+                    con.CloseConnection();
+                    con.Dispose();
+                }
+            } while (RetryCounter > 0);
+            return cMsg;
+        }
+
+        public clsReturnMessage DeleteRecord(int? VehicleTypeID, clsSession cSession, clsReturnMessage cMsg)
+        {
+            DBConnect con = new DBConnect();
+            SqlTransaction ObjTran = null;
+            SqlParameter nReturnMessage = new SqlParameter();
+
+            int RetryCounter = 3;
+            do
+            {
+                try
+                {
+                    using (SqlCommand cmd = new SqlCommand())
+                    {
+                        cmd.CommandType = CommandType.StoredProcedure;
+                        cmd.CommandText = "usp_WB_Settings_VehicleTypeMaster_Delete";
+                        cmd.Parameters.AddWithValue("@VehicleTypeID", VehicleTypeID);
+                        cmd.Parameters.AddWithValue("@SessionLogID", cSession.SessionLogID);
+                        cmd.Parameters.AddWithValue("@CompanyID", cSession.CompanyID);
+                        nReturnMessage = cmd.Parameters.Add("@ReturnMessage", SqlDbType.VarChar, 50);
+                        nReturnMessage.Direction = ParameterDirection.Output;
+                        con.OpenConnection();
+                        cmd.Connection = con.Connection;
+                        ObjTran = con.BeginTransaction();
+                        cmd.Transaction = ObjTran;
+                        cmd.ExecuteNonQuery();
+                        RetryCounter = 0;
+                        cMsg.ReturnMessage = Convert.ToString(nReturnMessage.Value);
+
+                        if (cMsg.ReturnMessage == "Deleted")
+                        {
+                            ObjTran.Commit();
+                        }
+                        else
+                        {
+                            ObjTran.Rollback();
+                        }
+                    }
+                }
+                catch (SqlException ex)
+                {
+                    if (ObjTran != null)
+                    {
+                        ObjTran.Rollback();
+                    }
+
+                    if ((ex.Number == 1205 || ex.Number == 2627) && (RetryCounter > 1))
+                    {
+                        RetryCounter = RetryCounter - 1;
+                        Thread.Sleep(500);
+                    }
+                    else
+                    {
+                        RetryCounter = 0;
+                        using (clsLog mLog = new clsLog())
+                        {
+                            mLog.AddToLog_Error(cSession.SessionLogID, Convert.ToString(ex.Message), "WB_VehicleTypeMasterDAO", "DeleteRecord");
+                        }
+                        cMsg.ReturnMessage = Debugger.IsAttached ? Convert.ToString(ex.Message) : (ex.Number == -2 ? "ExecutionTimeoutExpired" : "ServerErrorOccurred");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    if (ObjTran != null)
+                    {
+                        ObjTran.Rollback();
+                    }
+
+                    RetryCounter = 0;
+                    using (clsLog mLog = new clsLog())
+                    {
+                        mLog.AddToLog_Error(cSession.SessionLogID, Convert.ToString(ex.Message), "WB_VehicleTypeMasterDAO", "DeleteRecord");
+                    }
+                    cMsg.ReturnMessage = Debugger.IsAttached ? Convert.ToString(ex.Message) : "ServerErrorOccurred";
+                }
+                finally
+                {
+                    if (ObjTran != null)
+                    {
+                        ObjTran.Dispose();
+                    }
+                    con.CloseConnection();
+                    con.Dispose();
+                }
+            } while (RetryCounter > 0);
+            return cMsg;
+        }
+    }
+}

@@ -1,0 +1,225 @@
+Alter PROCEDURE [dbo].[usp_WB_Transactions_Ticket_PrintTicket](
+@TicketNo VARCHAR(25),
+@LoginID INT,
+@CompanyID INT
+)
+AS
+ BEGIN
+	DECLARE @LocalTicketNo VARCHAR(20) = @TicketNo
+	DECLARE @LocalLoginID INT = @LoginID
+	DECLARE @LocalCompanyID INT = @CompanyID
+	
+	/* Local Variables */
+	DECLARE @PrintFormat INT
+	DECLARE @PageSize VARCHAR(25)
+	DECLARE @PageOrientation VARCHAR(25)
+	DECLARE @PageCSS NVARCHAR(MAX)
+	DECLARE @PrintActionType INT
+	DECLARE @PrintCopies INT
+	DECLARE @HeaderType INT
+	DECLARE @HeaderSectionHeight VARCHAR(25)
+	DECLARE @HeaderLogoHeight VARCHAR(25)
+	DECLARE @HeaderLogoWidth VARCHAR(25)
+	DECLARE @ReportDetailHeight INT
+	DECLARE @FooterType INT
+	DECLARE @CanPrintPoweredBy BIT
+	DECLARE @CanPrintPageNo BIT
+
+	DECLARE @CompanyName VARCHAR(MAX)
+	DECLARE @CompanyNameLine2 VARCHAR(MAX)
+	DECLARE @CompanyAddress VARCHAR(MAX)
+	DECLARE @CompanyPhoneNo VARCHAR(50)
+	DECLARE @CompanyPoweredBy VARCHAR(150)
+	DECLARE @CompanyHeaderContent NVARCHAR(MAX)
+	DECLARE @CompanyLogoImagePath NVARCHAR(MAX)
+	
+	DECLARE @ReportHeaderContent NVARCHAR(MAX)
+	DECLARE @ReportDetailContent NVARCHAR(MAX)
+	DECLARE @ReportFooterContent NVARCHAR(MAX)
+
+	DECLARE @RowNo INT = 0
+	DECLARE @TicketID INT	
+	DECLARE @TicketDate VARCHAR(20)
+	DECLARE @ProductName VARCHAR(250)
+	DECLARE @EntryType VARCHAR(20)
+	DECLARE @Type VARCHAR(20)
+	DECLARE @PartyName VARCHAR(500)
+	DECLARE @VehicleNo VARCHAR(250)
+	DECLARE @GrossweightDateTime VARCHAR(20)
+	DECLARE @TareweightDateTime VARCHAR(20)
+	DECLARE @GrossWeight VARCHAR(20)
+	DECLARE @TareWeight VARCHAR(20)
+	DECLARE @Netweight VARCHAR(20)
+	DECLARE @Narration VARCHAR(MAX)
+	DECLARE @GeneratedBy VARCHAR(150)
+
+
+	/* Get Print Settings */
+	SELECT @PrintFormat = PrintFormat, @PageSize = PageSize, @PageOrientation = PageOrientation,
+	@PageCSS = PageCSS, @PrintActionType = PrintActionType, @PrintCopies = PrintCopies,
+	@HeaderType = HeaderType, @HeaderSectionHeight = HeaderSectionHeight,
+	@HeaderLogoHeight = HeaderLogoHeight, @HeaderLogoWidth = HeaderLogoWidth,
+	@ReportDetailHeight = ReportDetailHeight, @FooterType = FooterType,
+	@CanPrintPoweredBy = CanPrintPoweredBy, @CanPrintPageNo = CanPrintPageNo
+	FROM Common_PrintSettings
+	WHERE AreaName = 'WB' AND ControllerName = 'Ticket' AND PrintName = 'PrintTicket'
+	
+	/* Get Hospital Information */
+	SELECT @CompanyName = CompanyName,@CompanyNameLine2=CompanyNameLine2, @CompanyAddress = CompanyAddress,
+	@CompanyPhoneNo = CompanyPhoneNo, @CompanyPoweredBy = CompanyPoweredBy,
+	@CompanyLogoImagePath = (CASE WHEN @HeaderType = 1 THEN CompanyHeaderImagePath WHEN @HeaderType = 2 THEN CompanyLogoImagePath END)
+	FROM Admin_CompanyMaster WHERE CompanyID = @LocalCompanyID
+	
+	/* Get Purchase Invoice Details */
+	SELECT @TicketID = TicketID,
+	@LocalTicketNo = TicketNo,
+	@TicketDate = dbo.FormatDate(TicketDate,'DD-MM-YYYY'),
+	@EntryType=EntryType,
+	@Type=WB_Ticket.Type,
+	@PartyName=PartyName,
+	@VehicleNo=VehicleNo,
+	@ProductName=ProductName,
+	@GrossWeight=Grossweight,
+	@GrossweightDateTime=GrossweightDateTime,
+	@TareWeight=WB_Ticket.Tareweight,
+	@TareweightDateTime=TareweightDateTime,
+	@Netweight=Netweight,
+	@Narration = Narration,
+	@GeneratedBy = UserFullName
+	FROM WB_Ticket
+	INNER JOIN WB_VehicleMaster ON WB_Ticket.VehicleID=WB_VehicleMaster.VehicleID
+	INNER JOIN IMS_ProductMaster ON WB_Ticket.ProductID = IMS_ProductMaster.ProductID
+	INNER JOIN Common_StatusText ON WB_Ticket.StatusID = Common_StatusText.StatusID AND ForTable = 'WB_Ticket'
+	INNER JOIN Security_Login ON WB_Ticket.CreatedBy = Security_Login.UID
+	WHERE TicketNo = @LocalTicketNo AND IsCancelled = 0
+
+	
+	/* Hospital Header */
+	IF(@HeaderType = 2)
+	BEGIN
+		SET @CompanyHeaderContent = '<div style="padding-top:10px;"><div style="font-variant:small-caps; font-size:30px; font-weight:bold;">' + 
+			ISNULL(@CompanyName,'') +
+		'</div>
+		<div style="margin-top:10px;"><b>' +
+			ISNULL(@CompanyAddress,'') + CASE WHEN @CompanyPhoneNo IS NOT NULL THEN ' Phone No.:' + @CompanyPhoneNo ELSE '' END +
+		'</b></div></div>'
+	END
+	ELSE IF(@HeaderType = 3)
+	BEGIN
+		SET @CompanyHeaderContent = '<div style="font-variant:small-caps; font-size:30px; font-weight:bold;">' + 
+			ISNULL(@CompanyName,'') +
+		'</div>
+		<div style="margin-top:10px;"><b>' +
+			ISNULL(@CompanyAddress,'') + CASE WHEN @CompanyPhoneNo IS NOT NULL THEN ' Phone No.:' + @CompanyPhoneNo ELSE '' END +
+		'</b></div>'
+	END
+	
+	/* Report Header */
+	SET @ReportHeaderContent = '<table class="pagetable">
+		<tbody>
+			<tr>
+				<td colspan="4" width="100%" align="center"><font style="font-size:20px;"><b><u>Ticket</u></b></font></td>
+			</tr>
+			<tr height="3px">
+				<td height="3px" colspan="4" width="100%"><hr class="horizontalRuler"></td>
+			</tr>
+			<tr>
+				<td align="left">Ticket No.<b> : ' + ISNULL(@LocalTicketNo,'') + '</b></td>
+			</tr>
+			<tr>
+				<td align="left">Ticket Date.<b> : ' + ISNULL(@TicketDate,'') + '</b></td>
+			</tr>
+			<tr>
+				<td align="left">Vehicle No.<b> : ' + ISNULL(@VehicleNo,'') + '</b></td>
+			</tr>
+			<tr>
+				<td align="left">Party Name.<b> : ' + ISNULL(@PartyName,'') + '</b></td>
+			</tr>
+			<tr>
+				<td align="left">Product Name.<b> : ' + ISNULL(@ProductName,'') + '</b></td>
+			</tr>
+			<tr>
+				<td align="left">Gross Weight.<b> : ' + ISNULL(@GrossWeight,'') + '</b></td>
+			</tr>
+			<tr>
+				<td align="left">Gross Date.<b> : ' + ISNULL(@GrossweightDateTime,'') + '</b></td>
+			</tr>
+			<tr>
+				<td align="left">Tare Weight.<b> : ' + ISNULL(@TareWeight,'') + '</b></td>
+			</tr>
+			<tr>
+				<td align="left">Tare Date.<b> : ' + ISNULL(@TareweightDateTime,'') + '</b></td>
+			</tr>
+			<tr>
+				<td align="left">Net Weight.<b> : ' + ISNULL(@NetWeight,'') + '</b></td>
+			</tr>
+			
+			<tr height="3px">
+				<td height="3px" colspan="4" width="100%"><hr class="horizontalRulerDotted"></td>
+			</tr>
+			<tr height="3px">
+				<td height="3px" colspan="4"><hr class="horizontalRuler"></td>
+			</tr>
+		</tbody>
+	</table>'
+
+	/* Purchase Invoice Product Details */
+	
+	SET @ReportDetailContent =  '<table style=width:100%;" class="bordered-table">
+		<tbody>
+			<col width="3%" />
+			<col width="24%" />
+			<col width="8%" />
+			<col width="5%" />
+			<col width="5%" />
+			<col width="5%" />
+			<col width="8%" />
+			<col width="8%" />
+			<col width="8%" />
+			<col width="8%" />
+			<col width="8%" />
+			<col width="10%" />'
+
+	
+	/* close tag for table Footer Summary */
+	SET @ReportDetailContent = @ReportDetailContent + '</table><br>'
+
+	SET @ReportDetailContent = @ReportDetailContent + '<table style=width:100%;" class="pagetable">
+		<tbody>
+			<tr>
+				<td class="emptyRow" colspan="4" width="100%"> &nbsp; </td>
+			</tr>
+			<tr height="3px">
+				<td height="3px" colspan="4"><hr class="horizontalRuler"></td>
+			</tr>
+			<tr>
+				<td colspan="2" width="50%" align="left"><b>Print Date & Time : ' + dbo.FormatDate(GETDATE(),'DD-MM-YYYY HH:MI TT') + '</b></td>
+				<td colspan="2" width="50%" align="right"><b>Generated By : ' + ISNULL(@GeneratedBy,'') + '</b></td>
+			</tr>
+		</tbody>
+	</table>'
+	
+	/* Finally Select */
+	SELECT ISNULL(@PageSize,'')PageSize,
+	ISNULL(@PageOrientation,'')PageOrientation,
+	ISNULL(@PageCSS,'')PageCSS,
+	ISNULL(@PrintActionType,0)PrintActionType,
+	ISNULL(@PrintCopies,1)PrintCopies,
+	ISNULL(@HeaderType,0)HeaderType,
+	ISNULL(@HeaderSectionHeight,'106px')HeaderSectionHeight,
+	ISNULL(@HeaderLogoHeight,'100px')HeaderLogoHeight,
+	ISNULL(@HeaderLogoWidth,'100px')HeaderLogoWidth,
+	ISNULL(@ReportDetailHeight,800)ReportDetailHeight,
+	ISNULL(@FooterType,1)FooterType,
+	ISNULL(@CanPrintPoweredBy,1)CanPrintPoweredBy,
+	ISNULL(@CanPrintPageNo,1)CanPrintPageNo,	
+	ISNULL(@CompanyHeaderContent,'')CompanyHeaderContent,
+	ISNULL(@CompanyLogoImagePath,'')CompanyLogoImagePath,
+	ISNULL(@CompanyPoweredBy,'')CompanyPoweredBy,
+	ISNULL(@ReportHeaderContent,'')ReportHeaderContent,
+	ISNULL(@ReportDetailContent,'')ReportDetailContent,
+	ISNULL(@ReportFooterContent,'')ReportFooterContent
+ END
+
+
+

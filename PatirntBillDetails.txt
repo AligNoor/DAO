@@ -1,0 +1,3241 @@
+==================================================================================================javaScript===========================================================
+var IsSubmitted = false;
+var IsPopupOpen = false;
+var IsPartialSubmitted = false;
+var IndexGrid = parseInt('206');
+var ServiceGridHeight = parseInt('390');
+
+var IsSubmitted = false;
+var IsPopupOpen = false;
+
+
+var ProductGridHeight = parseInt('357');
+
+var PrintBillingSection = null;
+var PrintServiceInvoiceNo = null;
+
+///* Used Local Varialbes */
+var ServiceRowID = 0;
+var ServiceAvailID = 0;
+var ServiceDetailID = null;
+var ServiceRateID = null;
+var ServiceType = null;
+var ServiceID = null;
+var ServiceCode = null;
+var ServiceName = null;
+var IsProcedure = false;
+var IsServiceRateEditable = false;
+//var ServiceUnit = null;
+var ServiceRatePerUnit = null;
+var ServiceDiscountPerUnit = null;
+var ServiceDiscountAmount = null;
+//var ServiceAmount = null;
+//var InPackage = false;
+var PackageID = null;
+var PackageName = null;
+
+
+function OnIndexPageLoad() {
+    $('#BMS-PatientBillDetails-IndexGrid').dataTable({
+        "dom": '<"top"<"clear">><rt><"bottom"<"col-sm-4 nopadding"l><"col-sm-4 nopadding text-center"i><"col-sm-4 nopadding"p><"clear">>',
+        "aLengthMenu": [25, 50, 100, 500, 1000],
+        "serverSide": true,
+        "processing": true,
+        "pageLength": 50,
+        "stateSave": true,
+        "stateDuration": stateDurationTime,
+        "pagingType": "input",
+        "ajax": {
+            url: GenerateControllerActionUrl('PopulateGrid'),
+            type: "POST",
+            error: function (xhr, status, err) {
+                $("#BMS-PatientBillDetails-IndexGrid").dataTable().fnProcessingIndicator(false);
+                AjaxFunctionError(xhr, status, err);
+            }
+        },
+        "destroy": true,
+        "language": {
+            "infoFiltered": "",
+            "processing": ""
+        },
+        "sScrollY": $(window).height() - IndexGrid,
+        "order": [[2, "desc"]],
+        "columns": [
+                { "data": "RowID", "orderable": false, width: "3%" },
+                { "data": "ServiceInvoiceID", "visible": false, "orderable": false },
+                { "data": "BillingSection", "visible": false, "orderable": false },
+                {
+                    "data": "ServiceInvoiceNo", "width": "9%",
+                    mRender: function (data, type, row) {
+                        return data;
+                    }
+                },
+                { "data": "ServiceInvoiceDateTime", "width": "7%" },
+                { "data": "BillingSectionText", "title": "Section", "width": "10%", "visible": false },
+                { "data": "BillTypeText", "title": "Bill Type", "width": "5%" },
+                {
+                    "data": "NetAmount", "width": "9%", "orderable": false, "sClass": "dt-right",
+                    mRender: function (data, type, row) {
+                        return parseFloat(data).toFixed(2)
+                    }
+                },
+                { "data": "RegistrationNo", "width": "8%", "orderable": false, "visible": false },
+                { "data": "PatientName", "orderable": false },
+                { "data": "PlanName", "title": "Plan", "width": "10%" },
+                { "data": "HospitalName", "title": "Ref.Hospital", "width": "10%" },
+                { "data": "ReferredByName", "title": "Referred By", "width": "15%" },
+                { "data": "StatusText", "title": "Status", "width": "9%" },
+                {
+                    "data": "ServiceInvoiceID", "orderable": false, width: "1%",
+                    mRender: function (data, type, row) {
+                        if (row.StatusText.toUpperCase() != 'CANCELLED') {
+                            //return '<i class="ui-tooltip fa fa-print" style="font-size:16px; cursor:pointer; color:#0000ff;" title="Click to Print" data-original-title="Edit" onclick="ShowPrintDialog(' + "'" + row.BillTypeText + "','" + row.BillingSection + "','" + row.ServiceInvoiceNo + "'" + ');"></i>'
+                            return '<i class="ui-tooltip fa fa-print" style="font-size:16px; cursor:pointer; color:#0000ff;" title="Click to Print" data-original-title="Edit" onclick="PrintBill(' + "'" + row.ServiceInvoiceNo + "'" + ');"></i>';
+                        }
+                        else {
+                            return '';
+                        }
+                    }
+                },
+                {
+                    "data": "ServiceInvoiceID", "orderable": false, width: "1%",
+                    mRender: function (data, type, row) {
+                        if (row.CanDelete == true && row.StatusText.toUpperCase() == 'GENERATED') {
+                            return '<i class="ui-tooltip fa fa-trash-o" style="font-size:16px; cursor:pointer; color:red;" title="Click to Cancel" onclick="CancelData(' + "'" + row.ServiceInvoiceID + "','" + row.ServiceInvoiceNo + "'" + ');"></i>';
+                        }
+                        else {
+                            return '';
+                        }
+                    }
+                }
+        ],
+        "fnInitComplete": function () {
+            DataTableFilterValue('BMS-Billing-IndexGrid', this.api());
+        }
+    });
+
+    $(".close").click(function (e) {
+        $('#BMS-PatientBillDetails-IndexGrid').dataTable().fnDraw();
+    });
+
+
+
+    $("#btnPrintPaymentReceipt").click(function (e) {
+        e.preventDefault();
+        $('#divPrint').dialog('close');
+        return false;
+    });
+
+    $(document).on("keydown", function (e) {
+        if (e.which === 113 && IsPopupOpen == false) { //For F2
+            e.preventDefault();
+            window.location.href = GenerateControllerActionUrl('Create');
+        }
+    });
+}
+
+function EditDetail(ServiceInvoiceID) {
+    //alert(ServiceInvoiceID);
+    //window.location.href = GenerateControllerActionUrl('EditDetail') + '?ServiceInvoiceID=' + ServiceInvoiceID;
+    return false;
+}
+
+function CancelData(ServiceInvoiceID, ServiceInvoiceNo) {
+    IsPopupOpen = true;
+    bootbox.prompt({
+        title: 'Are you sure want to cancel Bill No.: ' + ServiceInvoiceNo,
+        inputType: 'textarea',
+        placeholder: 'Cancellation Reason',
+        buttons: {
+            cancel: {
+                label: 'Cancel',
+                className: 'btn-danger pull-left'
+            },
+            confirm: {
+                label: "Confirm",
+                className: "btn-success pull-right"
+            }
+        },
+        callback: function (result) {
+            if (result == null) {
+                IsPopupOpen = false;
+            }
+            else {
+                if (!(result)) {
+                    CancellationReasonValidation();
+                    return false;
+                }
+                else {
+                    CancelTransaction(ServiceInvoiceID, result);
+                    IsPopupOpen = false;
+                }
+            }
+        }
+    });
+}
+
+function CancelTransaction(ServiceInvoiceID, CancellationReason) {
+    var vData = {
+        ServiceInvoiceID: ServiceInvoiceID,
+        CancellationReason: CancellationReason
+    };
+    $.ajax({
+        url: GenerateControllerActionUrl('Cancel'),
+        type: "POST",
+        dataType: "json",
+        contentType: 'application/json',
+        async: false,
+        cache: false,
+        data: JSON.stringify(vData),
+        async: false,
+        cache: false,
+        dataType: "json",
+        success: function (result) {
+            if (result == 'Cancelled') {
+                $('#BMS-PatientBillDetails-IndexGrid').dataTable().fnDraw();
+                bootbox.alert({
+                    title: 'Success Message!',
+                    message: 'Bill Successfully Cancelled.'
+                });
+            }
+            else if (result == "CurrentDateIsLessThanBillDate") {
+                bootbox.alert({
+                    title: 'Warning Message',
+                    message: "Bill can't be cancel, because current System Date & Time is less than the Bill Date & Time."
+                });
+            }
+            else if (result == "StausNotAllowed") {
+                bootbox.alert({
+                    title: 'Warning Message',
+                    message: 'Only New Bill can be cancel.'
+                });
+            }
+            else if (result == "DaysNotAllowed") {
+                bootbox.alert({
+                    title: 'Warning Message',
+                    message: "Bill can't be cancel now because bill is older than the days allowed to cancel the Bill."
+                });
+            }
+            else if (result == "CreditNoteGenerated") {
+                bootbox.alert({
+                    title: 'Warning Message',
+                    message: "Bill can't be cancel now because already either the whole bill is cancelled or Credit Note is generated of the some of the services of this Bill."
+                });
+            }
+            else if (result == "ModelInvalid") {
+                bootbox.alert({
+                    title: 'Validation Failed!',
+                    message: 'ServiceInvoiceID is required to cancel. Please try again.<br\>If the problem persists then please contact system administrator.'
+                });
+            }
+            else {
+                bootbox.alert({
+                    title: 'Server Error!',
+                    message: result
+                });
+            }
+        },
+        error: AjaxFunctionError
+    });
+}
+
+function OnCreatePageLoad() {
+    $("#ReferredByName").dblclick(function () {
+        if ($(this).is('[readonly]')) {
+            $(this).attr("ReadOnly", false);
+            $(this).css('cursor', 'default');
+            $(this).attr('title', '');
+
+            $("#ReferredByID").val(null);
+            $("#ReferredByName").val(null);
+            setTimeout(function () { $('#ReferredByName').focus(); }, 1);
+        }
+        return false;
+    });
+
+    $("#ReferredByName").mcautocomplete({
+       
+        showHeader: true,
+       
+        columns: [
+                { name: 'Code', minWidth: '100px', valueField: 'ReferredByCode' },
+                { name: 'Referred By', minWidth: '300px', valueField: 'ReferredByName' },
+                { name: 'Mobile No', minWidth: '100px', valueField: 'MobileNo' },
+                { name: 'Address', minWidth: '250px', valueField: 'ReferredByAddress' }
+        ],
+        minLength: 1,
+       
+        source: function (request, response) {
+            $.ajax({
+                url: GenerateControllerActionUrl('GetReferredBy'),
+                type: "POST",
+                dataType: "json",
+                data: {
+                    ReferredByName: $("#ReferredByName").val()
+                },
+                success: function (data) {
+                    if (data.ReturnMessage == "Success") {
+                        var result = data.lst;
+                        if (!result || result.length === 0) {
+                            result = [{
+                                ReferredByCode: '',
+                                ReferredByName: 'No match found'
+                            }];
+                        }
+                        response(result);
+                    }
+                    else {
+                        ShowToastNotification({
+                            type: 'error',
+                            title: data.ReturnMessage
+                        });
+                        $("#ReferredByID").val(null);
+                        $("#ReferredByName").val(null);
+                        setTimeout(function () { $('#ReferredByName').focus(); }, 1);
+                    }
+                },
+                error: AjaxFunctionError
+            });
+        },
+        position: {
+            my: "right top",
+            at: "right bottom"
+        },
+        open: function () {
+            $(this).removeClass("ui-corner-all").addClass("ui-corner-top");
+            return false;
+        },
+        close: function () {
+            $(this).removeClass("ui-corner-top").addClass("ui-corner-all");
+        },
+        focus: function (event, ui) {
+            return false;
+        },
+        select: function (event, ui) {
+            if (parseInt(ui.item.ReferredByID) > 0) {
+                $("#ReferredByID").val(ui.item.ReferredByID);
+                $("#ReferredByName").val(ui.item.ReferredByName);
+
+                $("#ReferredByName").attr("ReadOnly", true);
+                $('#ReferredByName').css('cursor', 'pointer');
+                $('#ReferredByName').attr('title', 'Double Click to Edit');
+
+                setTimeout(function () { $('#PlanID').focus(); }, 1);
+            }
+            else {
+                $("#ReferredByID").val(null);
+                $("#ReferredByName").val(null);
+                setTimeout(function () { $('#ReferredByName').focus(); }, 1);
+            }
+            return false;
+        },
+        change: function (event, ui) {
+            if (!ui.item) {
+                $("#ReferredByID").val(null);
+                $("#ReferredByName").val(null);
+                setTimeout(function () { $('#ReferredByName').focus(); }, 1);
+            }
+        }
+    });
+    
+    $("#BillNo").mcautocomplete({
+  
+        showHeader: true,
+        columns: [
+           
+                { name: 'BillNo', minWidth: '75px', valueField: 'BillNo' },
+                { name: 'BillDate', minWidth: '200px', valueField: 'BillDate'},
+                { name: 'PatientName', minWidth: '300px', valueField: 'PatientName' },
+        ],
+        minLength: 1,
+        source: function (request, response) {
+            $.ajax({
+                url: GenerateControllerActionUrl('GetPatientBillDetails'),
+                type: "POST",
+                dataType: "json",
+                data: {
+                   
+                    ServiceInvoiceNo: $("#BillNo").val()
+                },
+                
+                success: function (data) {
+                    var result;
+                    if (!data || data.length === 0) {
+                        result = [{
+                            RegistrationNo: 'No match found',
+                            PatientName: ''
+                        }];
+                    }
+                    else {
+                        result = data;
+                    }
+                    response(result);
+                },
+                error: AjaxFunctionError
+            });
+        },
+        position: {
+            my: "right top",
+            at: "right bottom"
+        },
+        open: function () {
+            $(this).removeClass("ui-corner-all").addClass("ui-corner-top");
+            return false;
+        },
+        close: function () {
+            $(this).removeClass("ui-corner-top").addClass("ui-corner-all");
+        },
+        focus: function (event, ui) {
+            return false;
+        },
+        select: function (event, ui) {
+            if (parseInt(ui.item.ServiceInvoiceID) > 0) {
+                //ResetControls();
+                //ClearServiceControls(true);
+                //alert();
+                //showLoader();
+                //var str = $("#ServiceInvoiceID").val();
+                //alert(ui.item.ServiceInvoiceNo);
+             
+                
+                $("#ServiceInvoiceID").val(ui.item.ServiceInvoiceID);
+                $('#BMS-PatientBillDetails-ServiceDetail').dataTable().fnClearTable();
+                setTimeout(function () { GetBillingDetails(ui.item.ServiceInvoiceID, ui.item.BillNo); }, 1);
+                //alert(ui.item.BillNo);
+                //setTimeout(function () { AddServiceRow(); }, 1);
+            }
+            else {
+                $("#BillNo").val(null);
+                $("#ServiceInvoiceID").val(null);
+                $("#BillNo").focus();
+            }
+            return false;
+        },
+        change: function (event, ui) {
+            if (!ui.item) {
+                //ResetControls();
+                //ClearServiceControls(true);
+            }
+        }
+    });
+
+  
+    /*Code for Click Event*/
+  
+
+    $("#btnMainSubmit").click(function (e) {
+        e.preventDefault();
+        if (!IsPopupOpen && IsSubmitted == false && !($("#btnMainSubmit").is(':disabled'))) {
+            IsSubmitted = true;
+
+            //showLoader();
+            if ($("#btnMainSubmit").is(':focus')) {
+                //alert();
+                setTimeout(function () { SubmitForm(); }, 1);
+            }
+            else {
+                $("#btnMainSubmit").focus();
+                setTimeout(function () { SubmitForm(); }, 10);
+            }
+        }
+        return false;
+    });
+
+    $("#btnReset").click(function (e) {
+        e.preventDefault();
+        ResetCommand();
+        return false;
+    });
+
+    $("#btnPrintBill").click(function (e) {
+        e.preventDefault();
+        if (!IsPopupOpen && !($("#btnPrintBill").is(':disabled'))) {
+            PrintBill($("#ServiceInvoiceNo").val());
+        }
+        return false;
+    });
+
+
+
+    $(document).on("keydown", function (e) {
+        if (e.which === 121) { //For F10-Add
+            e.preventDefault();
+            if (!IsPopupOpen && IsSubmitted == false && !($("#btnAddService").is(':disabled'))) {
+                IsSubmitted = true;
+
+                showLoader();
+                if ($("#btnAddService").is(':focus')) {
+                    setTimeout(function () { AddServiceRow(); }, 1);
+                }
+                else {
+                    $("#btnAddService").focus();
+                    setTimeout(function () { AddServiceRow(); }, 10);
+                }
+            }
+        }
+        else if (e.which === 120) { //For F9-Save                
+            e.preventDefault();
+            if (!IsPopupOpen && IsSubmitted == false && !($("#btnMainSubmit").is(':disabled'))) {
+                IsSubmitted = true;
+
+                showLoader();
+                if ($("#btnMainSubmit").is(':focus')) {
+                    setTimeout(function () { SubmitForm(); }, 1);
+                }
+                else {
+                    $("#btnMainSubmit").focus();
+                    setTimeout(function () { SubmitForm(); }, 10);
+                }
+            }
+        }
+        else if (e.which === 119) { //For F8-Print                
+            e.preventDefault();
+            if (!IsPopupOpen && !($("#btnPrintBill").is(':disabled'))) {
+                PrintBill($("#ServiceInvoiceNo").val());
+            }
+        }
+        else if (e.which === 118) { //For F7-Reset                
+            e.preventDefault();
+            if (!IsPopupOpen) {
+                ResetCommand();
+            }
+        }
+        else if (e.which === 113) { //For F2
+            e.preventDefault();
+            if (!IsPopupOpen) {
+                window.location.href = GenerateControllerActionUrl('Index');
+            }
+        }
+    });
+
+    /*Execute on PageLoad*/
+    
+    CreateProductDetailsTable();
+    
+
+    setTimeout(function () { $("#RegistrationNo").focus(); }, 1);
+}
+
+function CreateProductDetailsTable(PageMode) {
+    try {
+        /* Create Table */
+        $('#BMS-PatientBillDetails-ServiceDetail').dataTable({
+            "dom": '<"top"<"col-sm-12 nopadding"C>><rt>',
+            "paging": false,
+            "ordering": false,
+            "searching": false,
+            "info": false,
+            "destroy": true,
+            "colVis": {
+                'overlayFade': '1',
+                'align': 'right',
+                'buttonText': 'Show/Hide Columns',
+                'restore': 'Revert to default visibility',
+                "stateChange": function (iColumn, bVisible) {
+                    $('#BMS-PatientBillDetails-ServiceDetail').DataTable().columns.adjust().draw();
+                }
+            },
+            "sScrollY": $(window).height() - ProductGridHeight,
+            "scrollCollapse": true,
+            "columns": [
+                        { "data": "ServiceDate", "title": "Date", width: "8%", },
+                        { "data": "ServiceName", "title": "Service Name", "sClass": "font-bold" },
+                        { "data": "ConsultantName", "title": "Consultant", width: "20%" },
+                        
+                        { "data": "ServiceUnit", "title": "Unit", width: "8%", "sClass": "dt-right" },
+                        { "data": "ServiceRatePerUnit", "title": "Service Rate", width: "8%", "sClass": "dt-right" },
+                   
+                        { "data": "ServiceDiscountAmount", "visible": false },
+                        { "data": "ServiceAmount", "title": "Amount <i class='fa fa-inr'></i>", width: "8%", "sClass": "dt-right" },
+                        { "data": "CashDiscountAmount", "title": "Discount <i class='fa fa-inr'></i>", width: "8%", "sClass": "dt-right" },
+                        {
+                            "data": "CanDelete", "width": "1%",
+                            mRender: function (data, type, row) {
+                                if (row.CanDelete == true) {
+                                    return '<i class="ui-tooltip fa fa-trash-o" style="font-size:14px; cursor:pointer; color:#ff0101;" data-original-title="Delete" id="btnDeleteServiceRow_' + row.ServiceRowID + '" onclick="DeleteServiceRow(' + row.ServiceRowID + ');"></i>';
+                                }
+                                else {
+                                    return ''
+                                }
+                            }
+                        },
+            ],
+            "footerCallback": function (row, data, start, end, display) {
+                var api = this.api();
+            }
+        });
+
+        /* Add CSS Class to ColVis button and append to #divColVis */
+        $('.ColVis_MasterButton').removeClass('ColVis_Button').addClass('btn btn-primary btn-small form-control input-sm');
+        $('.ColVis_MasterButton').detach().appendTo('#divColVis');
+    }
+    catch (err) {
+        ShowAlertNotification({
+            type: 'error',
+            title: 'Javascript Exception',
+            message: err.message
+        });
+        console.log('%cFunction Name		: ' + arguments.callee.name + '\nError Descriptions	: ' + err, "color: blue; font-weight: bold;");
+    }
+    finally {
+        closeLoader();
+    }
+}
+
+function GetServiceDetails() {
+    var bFlag = false;
+    try {
+        var modelData = {
+            ServiceInvoiceID: $("#ServiceInvoiceID").val(),
+        };
+        $.ajax({
+            url: GenerateControllerActionUrl('GetServiceDetails'),
+            type: "POST",
+            dataType: "json",
+            contentType: 'application/json',
+            async: false,
+            cache: false,
+            data: JSON.stringify(modelData),
+            success: function (data) {
+                if (data.ReturnMessage == "Success") {
+                    bFlag = true;
+
+                    if (data.lst.length > 0) {
+                       
+                        $('#BMS-PatientBillDetails-ServiceDetail').dataTable().fnAddData(data.lst);
+                        RowID = data.lst.length + 1;
+                       
+                    }
+                    else {
+                        ShowAlertNotification({
+                            type: 'info',
+                            title: 'Warning Message',
+                            message: 'Patient Bill Details not found.',
+                            callback: function (result) {
+                                if (OnPageLoad == true) {
+                                    window.location.href = GenerateControllerActionUrl('Index');
+                                }
+                            }
+                        });
+                    }
+                }
+                else {
+                    ShowAlertNotification({
+                        type: 'error',
+                        title: 'Server Error',
+                        message: data.ReturnMessage,
+                        callback: function (result) {
+                            if (OnPageLoad == true) {
+                                window.location.href = GenerateControllerActionUrl('Index');
+                            }
+                        }
+                    });
+                }
+            },
+            error: function (xhr, status, err) {
+                ShowAlertNotification({
+                    type: 'error',
+                    title: 'Server Error',
+                    message: "Ready State: " + xhr.readyState + "<br/>Status: " + xhr.status + "<br/>Response Text: " + xhr.responseText,
+                    callback: function (result) {
+                        if (OnPageLoad == true) {
+                            window.location.href = GenerateControllerActionUrl('Index');
+                        }
+                    }
+                });
+            }
+        });
+    }
+    catch (err) {
+        ShowAlertNotification({
+            type: 'error',
+            title: 'Javascript Exception',
+            message: err.message,
+            callback: function (result) {
+                if (OnPageLoad == true) {
+                    window.location.href = GenerateControllerActionUrl('Index');
+                }
+            }
+        });
+        console.log('%cFunction Name		: ' + arguments.callee.name + '\nError Descriptions	: ' + err, "color: blue; font-weight: bold;");
+    }
+    return bFlag;
+}
+
+function GetBillingDetails(ServiceInvoiceID, BillNo) {
+    var bFlag = false;
+    try {
+        if (parseInt(ServiceInvoiceID) > 0) {
+            var vData = {
+                ServiceInvoiceID: ServiceInvoiceID,
+                BillNo: BillNo
+            };
+            $.ajax({
+                url: GenerateControllerActionUrl('GetBillingDetails'),
+                type: "POST",
+                dataType: "json",
+                contentType: 'application/json',
+                async: false,
+                cache: false,
+                data: JSON.stringify(vData),
+                success: function (data) {
+                    if (data.ReturnMessage) {
+                        if (data.ReturnMessage == "Success") {
+                            if (parseInt(data.model.ServiceInvoiceID) > 0) {
+                                $('#RegistrationID').val(data.model.RegistrationID);
+                                $('#BillingSection').val(data.model.BillingSection);
+                                $("#txtBillNo").text(data.model.BillNo);
+                                $("#txtBillDate").text(data.model.BillDate);
+
+                                $('#HospitalID').val(data.model.HospitalID);
+                                $('#HospRegistrationNo').val(data.model.HospRegistrationNo);
+                                $('#PlanID').val(data.model.PlanID);
+                                $('#DeliveryByID').val(data.model.DeliveryByID);
+                                $('#ReferredByName').val(data.model.ReferredByName);
+                                $('#txtSubTotalAmount').text(data.model.SubTotalAmount);
+                                $('#PatientPrefix').val(data.model.PatientPrefix);
+                                $('#PatientName').val(data.model.PatientName);
+                                $('#Age').val(data.model.Age);
+                                $('#AgeVal').val(data.model.AgeVal);
+                                $('#Sex').val(data.model.Sex);
+                                $('#PatientAddress').val(data.model.PatientAddress);
+
+                                $('#PatientCity').val(data.model.PatientCity);
+                                $('#PatientMobileNo').val(data.model.PatientMobileNo);
+                                $('#PatientEmailID').val(data.model.PatientEmailID);
+
+                                setTimeout(function () { GetServiceDetails(data.model.ServiceInvoiceID); }, 1);
+                                /* Set the bFlag as True */
+                                bFlag = true;
+                            }
+                            else {
+                                ShowAlertNotification({
+                                    type: 'warning',
+                                    title: 'Warning Message',
+                                    message: 'ServiceInvoiceID does not exists in the system with the given Registration No., Please try again.',
+                                    callback: function (result) {
+                                        setTimeout(function () { $("#BillNo").focus(); }, 1);
+                                    }
+                                });
+                            }
+                        }
+                        else {
+                            ShowAlertNotification({
+                                type: 'error',
+                                title: 'Server Error',
+                                message: data.ReturnMessage,
+                                callback: function (result) {
+                                    setTimeout(function () { $('#BillNo').focus(); }, 1);
+                                }
+                            });
+                        }
+                    }
+                    else {
+                        ShowAlertNotification({
+                            type: 'error',
+                            title: 'OOPS',
+                            message: 'Something went wrong while processing your request. Please try again.<br\>If the problem persists then please contact the system administrator.',
+                            callback: function (result) {
+                                setTimeout(function () { $('#BillNo').focus(); }, 1);
+                            }
+                        });
+                    }
+                },
+                error: AjaxFunctionError
+            });
+        }
+    }
+    catch (err) {
+        ShowAlertNotification({
+            type: 'error',
+            title: 'Javascript Exception',
+            message: err.message,
+            callback: function (result) {
+                setTimeout(function () { $('#BillNo').focus(); }, 1);
+            }
+        });
+        console.log('%cFunction Name		: ' + arguments.callee.name + '\nError Descriptions	: ' + err, "color: blue; font-weight: bold;");
+    }
+    finally {
+        closeLoader();
+        if (bFlag == false) {
+            //ResetControls();
+
+            //ClearServiceControls(true);
+            setTimeout(function () { $('#RegistrationNo').focus(); }, 1);
+        }
+        else {
+            setTimeout(function () { $('#SearchValue').focus(); }, 1);
+        }
+    }
+}
+
+function SaveRecord() {
+    var bFlag = false;
+    try {
+        $.ajax({
+            url: GenerateControllerActionUrl('Create'),
+            type: "POST",
+            data: new FormData($('form')[0]),
+            cache: false,
+            contentType: false,
+            processData: false,
+            success: function (data) {
+                if (data == 'Saved') {
+                    bFlag = true;
+                    window.location.href = GenerateControllerActionUrl('Create');
+                }
+                else {
+                    closeLoader();
+                    IsPopupOpen = true;
+
+                    var LocalSplittedData = null;
+                    if (data) {
+                         if (data == 'NULLList') {
+                            ShowAlertNotification({
+                                type: 'warning',
+                                title: 'Warning Message',
+                                message: 'Service List should contain at least 1 Item to Generate the Bill.',
+                                callback: function (result) {
+                                    IsPopupOpen = false;
+                                }
+                            });
+                        }
+                        else if (data.toLowerCase().indexOf("please review the following warning") >= 0) {
+                            ShowAlertNotification({
+                                type: 'warning',
+                                title: 'Form Validation Failed',
+                                message: data,
+                                callback: function (result) {
+                                    IsPopupOpen = false;
+                                }
+                            });
+                        }
+                        else {
+                            ShowAlertNotification({
+                                type: 'error',
+                                title: 'Server Error',
+                                message: data,
+                                callback: function (result) {
+                                    IsPopupOpen = false;
+                                }
+                            });
+                        }
+                    }
+                    else {
+                        ShowAlertNotification({
+                            type: 'error',
+                            title: 'OOPS',
+                            message: 'Something went wrong while processing your request. Please try again.',
+                            callback: function (result) {
+                                IsPopupOpen = false;
+                            }
+                        });
+                    }
+                }
+            },
+            error: AjaxFunctionError
+        });
+    }
+    catch (err) {
+        ShowAlertNotification({
+            type: 'error',
+            title: 'Javascript Exception',
+            message: err.message
+        });
+    }
+    finally {
+        if (bFlag == false) {
+            IsSubmitted = false;
+        }
+    }
+}
+
+function SubmitForm(PageMode) {
+    var bFlag = false;
+    try {
+        if ($("#frmMain").valid()) {
+            if ($('#BMS-PatientBillDetails-ServiceDetail').dataTable().fnGetData().length > 0) {
+                if (PageMode == 'Edit') {
+                    bFlag = true;
+                    ShowConfirmationAlert({
+                        message: 'Do you really want to <b>Update</b> the Sales Order?',
+                        callback: function (result) {
+                            if (result.value) {
+                                showLoader();
+                                if (SubmitListData() == true) {
+                                    setTimeout(function () { SaveRecord(); }, 1);
+                                    //setTimeout(function () { $("#frmMain").submit(); }, 1);
+                                }
+                                else {
+                                    CloseLoader();
+                                    IsSubmitted = false;
+                                }
+                            }
+                            else {
+                                IsSubmitted = false;
+                            }
+                        }
+                    });
+                }
+                else if (SubmitListData() == true) {
+                    bFlag = true;
+                    SaveRecord();
+                }
+            }
+            else {
+                var LocalActionType = PageMode == 'Edit' ? 'Update' : 'Generate';
+                ShowAlertNotification({
+                    type: 'warning',
+                    title: 'Warning Message',
+                    message: 'Sales List should contain at least 1 Item to <b>' + LocalActionType + '</b> the Sales Order.'
+                });
+            }
+        }
+        else {
+            ShowToastNotification({
+                type: 'warning',
+                title: 'Please provide all the required field to submit the form.',
+            });
+            setTimeout(function () { $('#frmMain .input-validation-error').filter(":enabled:visible:first").focus(); }, 1);
+        }
+    }
+    catch (err) {
+        ShowAlertNotification({
+            type: 'error',
+            title: 'Javascript Exception',
+            message: err.message
+        });
+        console.log('%cFunction Name		: ' + arguments.callee.name + '\nError Descriptions	: ' + err, "color: blue; font-weight: bold;");
+    }
+    //finally {
+    //    if (bFlag == false) {
+    //        closeLoader();
+    //        IsSubmitted = false;
+    //    }
+    //    else if ((PageMode == 'Edit') && bFlag == true) {
+    //        closeLoader();
+    //    }
+    //}
+}
+
+function SubmitListData() {
+    var bFlag = false;
+    try {
+        var lstData = {
+            BrowserTabID: $('#BrowserTabID').val(),
+            ServiceList: $('#BMS-PatientBillDetails-ServiceDetail').dataTable().fnGetData(),
+
+        }
+        $.ajax({
+            url: GenerateControllerActionUrl('SubmitListData'),
+            type: "POST",
+            dataType: "json",
+            contentType: 'application/json',
+            async: false,
+            cache: false,
+            data: JSON.stringify(lstData),
+            success: function (data) {
+                if (data == "Saved") {
+                    bFlag = true;
+                }
+                else {
+                    ShowAlertNotification({
+                        type: 'error',
+                        title: 'Server Error',
+                        message: data
+                    });
+                }
+            },
+            error: AjaxFunctionError
+        });
+    }
+    catch (err) {
+        ShowAlertNotification({
+            type: 'error',
+            title: 'Javascript Exception',
+            message: err.message
+        });
+        console.log('%cFunction Name		: ' + arguments.callee.name + '\nError Descriptions	: ' + err, "color: blue; font-weight: bold;");
+    }
+    return bFlag;
+}
+
+function ResetCommand() {
+    ShowConfirmationAlert({
+        message: 'Are you sure want to reset the page?',
+        callback: function (result) {
+            if (result.value) {
+                window.location.href = GenerateControllerActionUrl('Create');
+            }
+        }
+    });
+    return false;
+}
+
+--====================================================================================CREATE================================================================================
+@model QuraHMS.Entity.BMS.PatientBillDetails
+
+@{
+    ViewBag.Title = "Patient Bill Details";
+    Layout = "~/Views/Shared/_LayoutV3.cshtml";
+}
+
+@using JQueryUIHelpers;
+
+<div class="breadcrumbs">
+    <div class="btntopheader">
+        <a href="@Url.Action("Index", "PatientBillDetails", new { area = "BMS" })"><i class="fa fa-arrow-circle-left"></i>&nbsp;Back</a>
+    </div>
+    <ul>
+        <li><a>Billing</a><i class="fa fa-angle-right"></i></li>
+        <li><a>Transactions</a><i class="fa fa-angle-right"></i></li>
+        <li><a>Patient Bill Details</a></li>
+    </ul>
+</div>
+<div class="col-sm-12 nopadding">
+    <div class="box box-bordered nopadding">
+        <div class="box-content nopadding">
+            @using (Ajax.BeginForm("", "PatientBillDetails", new { area = "BMS" }, new AjaxOptions { }, new { enctype = "multipart/form-data", id = "frmMain", @class = "form-validate", autocomplete = "off" }))
+            {
+                @Html.HiddenFor(m => m.BrowserTabID)
+                @Html.HiddenFor(m => m.ServiceInvoiceID)
+
+                @Html.HiddenFor(m => m.ServiceInvoiceNo)
+
+                @*@Html.HiddenFor(m => m.IsBillingDateEditable)
+                @Html.HiddenFor(m => m.DaysAllowedToOPForBilling)
+                @Html.HiddenFor(m => m.DaysAllowedToIPForBilling)
+                @Html.HiddenFor(m => m.IsOPBillAllowedForIP)
+                @Html.HiddenFor(m => m.IsIPBillAllowedWithoutDischarge)
+                @Html.HiddenFor(m => m.IsAllowedBillingForIPMainBill)
+                @Html.HiddenFor(m => m.IsChargesSplitUpEditable)*@
+
+                @Html.HiddenFor(m => m.PID)
+                @Html.HiddenFor(m => m.RegistrationID)
+                @*@Html.HiddenFor(m => m.RegistrationType)*@
+                @Html.HiddenFor(m => m.StatusText)
+
+                @Html.HiddenFor(m => m.ReferredByID)
+
+                //Service Related Hidden Controls
+                @*@Html.HiddenFor(m => m.ProcedureDoneByConsultantID)
+                @Html.HiddenFor(m => m.IsAllowedAdditionalDescription)
+                @Html.HiddenFor(m => m.IsAdditionalDescriptionRequired)
+                @Html.HiddenFor(m => m.IsDiscountApprovalRequired)*@
+
+                @Html.HiddenFor(m => m.SubTotalAmount)
+                @Html.HiddenFor(m => m.TotalCashDiscountAmount)
+                @Html.HiddenFor(m => m.DiscountAmount)
+                @*@Html.HiddenFor(m => m.GrandTotalAmount)
+                @Html.HiddenFor(m => m.CoinAdjustment)*@
+                @Html.HiddenFor(m => m.NetAmount)
+                @*@Html.HiddenFor(m => m.TotalDiscountAllowed)
+                @Html.HiddenFor(m => m.AdvanceAdjustmentAmount)
+                @Html.HiddenFor(m => m.BalanceAmount)*@
+                @Html.HiddenFor(m => m.chkServiceType)
+
+                <div class="col-sm-12 nopadding div-grey" style="margin-top:1px;">
+                    <div class="box box-bordered box-color nopadding">
+                        <div class="box-content nopadding" style="border-top-width: 1px; border-top-style: solid;">
+                            <div class='form-horizontal form-column form-bordered div-grey'>
+                                <div class="col-sm-6 nopadding">
+
+                                    </div>
+                                 <div class="col-sm-6 nopadding no-border-left">
+                                    <div class="form-group required">
+                                        @Html.Label("Bill No", new { @class = "control-label right col-sm-6" })
+                                        <div class="col-sm-6">
+                                           @Html.TextBoxFor(m => m.BillNo, null, new { placeholder = "Type To Search Bill No", @class = "form-control input-sm" })
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-sm-6 nopadding div-grey">
+                    <div class="box box-bordered box-color nopadding">
+                        <div class="box-title" style="color:White;"><b><center>Patient Information</center></b></div>
+                        <div class="box-content nopadding" style="border-bottom:0px;">
+                            <div class='form-horizontal form-column form-bordered div-grey'>
+                                <div class="col-sm-12 nopadding">
+                                    <div class="form-group required">
+                                        @Html.LabelFor(m => m.PatientName, new { @class = "control-label right col-sm-2" })
+                                        <div class="col-sm-2">
+                                            @Html.DropDownListFor(m => m.PatientPrefix, (SelectList)ViewBag.StaffPrefixList, "--Select--", new { @class = "form-control input-sm" })
+                                        </div>
+                                        <div class="col-sm-8">
+                                            @Html.TextBoxFor(m => m.PatientName, null, new { placeholder = "Full Name", @class = "form-control input-sm" })
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-sm-6  form-group nopadding" style="height:29px; border-bottom:1px solid #ddd;">
+                                    <div class="form-group required">
+                                        @Html.LabelFor(m => m.AgeSex, new { @class = "control-label right col-sm-4" })
+                                        <div class="col-sm-5">
+                                            <div class="input-group">
+                                                @Html.TextBoxFor(m => m.Age, null, new { @class = "form-control input-sm inputmask-int font-bold" })
+                                                <div class="input-group-btn" style="border-right:1px solid #ddd;">
+                                                    @Html.DropDownListFor(m => m.AgeVal, Model.AgeValList, new { @class = "select input-sm", @style = "border-left:0px;" })
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-sm-6 nopadding">
+                                    <div class="form-group">
+                                        @Html.LabelFor(m => m.Sex, new { @class = "control-label right col-sm-4" })
+                                        <div class="col-sm-8">
+                                            @Html.DropDownListFor(m => m.Sex, Model.SexList, "-=Select=-", new { @class = "form-control input-sm" })
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-sm-12 nopadding">
+                                    <div class="form-group">
+                                        @Html.LabelFor(m => m.PatientAddress, new { @class = "control-label right col-sm-2" })
+                                        <div class="col-sm-10">
+                                            @Html.TextAreaFor(m => m.PatientAddress, new { placeholder = "Full Address", @class = "form-control input-sm", @style = "height: 58px;" })
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-sm-6 nopadding">
+                                    <div class="form-group">
+                                        @Html.LabelFor(m => m.PatientCity, new { @class = "control-label right col-sm-4" })
+                                        <div class="col-sm-8">
+                                            @Html.TextBoxFor(m => m.PatientCity, null, new { placeholder = "City/District", @class = "form-control input-sm" })
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-sm-6 nopadding">
+                                    <div class="form-group required">
+                                        @Html.LabelFor(m => m.PatientMobileNo, new { @class = "control-label right col-sm-4" })
+                                        <div class="col-sm-8">
+                                            @Html.TextBoxFor(m => m.PatientMobileNo, null, new { placeholder = "", @class = "form-control input-sm" })
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="col-sm-8 nopadding">
+                                    <div class="form-group">
+                                        @Html.LabelFor(m => m.PatientEmailID, new { @class = "control-label right col-sm-3" })
+                                        <div class="col-sm-9">
+                                            @Html.TextBoxFor(m => m.PatientEmailID, null, new { placeholder = "Email", @class = "form-control input-sm" })
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-sm-6 nopadding div-grey">
+                    <div class="box box-bordered box-color nopadding">
+                        <div class="box-title" style="color:White;"><b><center>Billing Information</center></b></div>
+                        <div class="box-content nopadding" style="border-left:0px;">
+                            <div class='form-horizontal form-column form-bordered div-grey'>
+                                <div  class="col-sm-6 nopadding">
+                                    <div class="form-group">
+                                        @Html.Label("Bill No", new { @class = "control-label right col-sm-4" })
+                                        <div class="col-sm-8">
+                                            <span id="txtBillNo" class="form-control input-sm font-bold">
+                                                @if (ViewBag.Action == "Create")
+                                                {
+                                                    @:New
+                                                    }
+                                                else
+                                                {
+                                                    @Html.DisplayFor(m => m.BillNo)
+                                                }
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                                 <div class="col-sm-6 nopadding">
+                                    <div class="form-group">
+                                        @Html.Label("Bill Date", new { @class = "control-label right col-sm-4" })
+                                        <div class="col-sm-8">
+                                            <span id="txtBillDate" class="form-control input-sm font-bold">
+                                                @Html.DisplayFor(m => m.BillDate)
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-sm-6 nopadding">
+                                    <div class="form-group">
+                                        @Html.LabelFor(m => m.HospitalID, new { @class = "control-label right col-sm-4" })
+                                        <div class="col-sm-8">
+                                            @Html.DropDownListFor(m => m.HospitalID, (SelectList)ViewBag.HospitalList, "--=: Select Hospital :=--", new { @class = "form-control input-sm" })
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-sm-6 nopadding">
+                                    <div class="form-group">
+                                        @Html.LabelFor(m => m.HospRegistrationNo, new { @class = "control-label right col-sm-4" })
+                                        <div class="col-sm-8">
+                                            @Html.TextBoxFor(m => m.HospRegistrationNo, null, new { placeholder = "Registration[IP/OP No]", @class = "form-control input-sm font-bold" })
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-sm-6 nopadding">
+                                    <div class="form-group required">
+                                        @Html.LabelFor(m => m.PlanID, new { @class = "control-label right col-sm-4" })
+                                        <div class="col-sm-8">
+                                            @Html.DropDownListFor(m => m.PlanID, (SelectList)ViewBag.PlanList, "--=: Select Plan :=--", new { @class = "form-control input-sm" })
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-sm-6 nopadding">
+                                    <div class="form-group required">
+                                        @Html.LabelFor(m => m.DeliveryBy, new { @class = "control-label right col-sm-4" })
+                                        <div class="col-sm-8">
+                                            @Html.DropDownListFor(m => m.DeliveryByID, Model.DeliveryByList, "--=: Select Delivery :=--", new { @class = "form-control input-sm" })
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-sm-12 nopadding">
+                                    <div class="form-group required">
+                                        @Html.LabelFor(m => m.ReferredByName, new { @class = "control-label right col-sm-2" })
+                                        <div class="col-sm-10">
+                                            @Html.TextBoxFor(m => m.ReferredByName, null, new { placeholder = "", @class = "form-control input-sm font-bold" })
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div id="divServiceDetail" class="col-sm-12 nopadding">
+                    <table id="BMS-PatientBillDetails-ServiceDetail" class="table table-hover table-nomargin table-bordered table-striped table-condensed" style="width:100%"></table>
+                </div>
+                <div class="col-sm-12 nopadding div-grey">
+                    <div class="box box-bordered box-color nopadding">
+                        <div class="box-content nopadding" style="border-top-width: 1px; border-top-style: solid; border-bottom:0px;">
+                            <div class='form-horizontal form-column form-bordered div-grey'>
+                                <div class="col-sm-12 nopadding" style="border-bottom: 1px solid #ddd;">
+                                    <div class="col-sm-9 nopadding">
+
+                                    </div>
+                                    
+                                    <div class="col-sm-3 nopadding">
+                                        <div class="form-group required" style="border-bottom:0;">
+                                            @Html.LabelFor(m => m.SubTotalAmount, new { @class = "control-label right col-sm-6 font-bold" })
+                                            <div class="col-sm-6">
+                                                <div class="input-group">
+                                                    <span class="input-group-addon"><i class="fa fa-inr"></i></span>
+                                                    <span id="txtSubTotalAmount" class="form-control input-sm font-bold" style="text-align:right;"></span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-sm-12 nopadding div-grey">
+                    <div class="box box-bordered box-color nopadding">
+                        <div class="box-content nopadding" style="border-top-width: 1px; border-top-style: solid;">
+                            <div class='form-horizontal form-column form-bordered'>
+                                <div class="col-sm-12 nopadding">
+                                    <div class="form-group">
+                                        <div class="col-sm-6">
+                                            <div class="form-group required">
+                                                @Html.Label("Prescription", new { @class = "control-label right col-sm-2" })
+                                                <div class="col-sm-9">
+                                                    @Html.TextBoxFor(m => m.files, null, new { placeholder = "Attach Prescription", type = "file", @class = "form-control input-sm" })
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-sm-4">
+                                            @Html.TextBoxFor(m => m.Narration, null, new { @placeholder = "Narration", @class = "form-control input-sm" })
+                                        </div>
+                                        
+                                        <div class="col-sm-1">
+                                            <input type="submit" value="Save" id="btnMainSubmit" class="btn btn-primary btn-small form-control input-sm" />
+                                        </div>
+                                        <div class="col-sm-1">
+                                            <input type="button" value="Reset" id="btnReset" class="btn btn-primary btn-small form-control input-sm" />
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+    <div>
+        @if (TempData["ErrorMessage"] != null)
+        {
+            <div class="alert alert-danger alert-dismissable">
+                <button type="button" class="close" data-dismiss="alert"><i class="fa fa-times-circle-o"></i></button>
+                <strong>Error!</strong>&nbsp;&nbsp;&nbsp;@Html.Raw(TempData["ErrorMessage"])
+            </div>
+        }
+        @if (TempData["WarningMessage"] != null)
+        {
+            <div class="alert alert-warning alert-dismissable">
+                <button type="button" class="close" data-dismiss="alert"><i class="fa fa-times-circle-o"></i></button>
+                <strong>Warning!</strong>&nbsp;&nbsp;&nbsp;@Html.Raw(TempData["WarningMessage"])
+            </div>
+        }
+        @if (TempData["SuccessMessage"] != null)
+        {
+            <div class="alert alert-success alert-dismissable">
+                <button type="button" class="close" data-dismiss="alert"><i class="fa fa-times-circle-o"></i></button>
+                <strong>Success!</strong>&nbsp;&nbsp;&nbsp;@Html.Raw(TempData["SuccessMessage"])
+                @if (Model.BillingSection == "IP")
+                {
+                    <button type="button" style="width:150px;" class="btn-print" id="btnPrintBillSummary"><i class="fa fa-print"></i>&nbsp;Print Summary Bill</button>
+                }
+                <span style="float:right;">&nbsp;&nbsp;&nbsp;</span>
+                <button type="button" style="width:150px;" class="btn-print" id="btnPrintBill"><i class="fa fa-print"></i>&nbsp;Print Detail Bill</button>
+            </div>
+        }
+    </div>
+</div>
+
+<! –– Referred By Registration Sidebar ––>
+<div class="modal fade right" id="sidebarReferredByRegistration" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-sidebar-md" role="document">
+        <div class="modal-content div-grey" style="padding:1px;">
+            <div class="modal-sidebar-header">
+                <h4 class="modal-title dt-center font-bold">Add Referred By</h4>
+            </div>
+            <div class="modal-sidebar-body">
+                <div class="col-sm-12 box box-bordered box-color nopadding theme-border-top">
+                    <div id="divReferredByRegistrationView" class="box-content nopadding theme-border-top"
+                         data-request-url="@Url.Action("ActionName", "ReferredByRegistration", new { area = "Admin" })">
+
+                    </div>
+                </div>
+            </div>
+            <div class="modal-sidebar-footer">
+                <div class="col-sm-12 box box-bordered box-color nopadding">
+                    <div class="box-content nopadding theme-border-top">
+                        <div class='form-horizontal form-column form-bordered'>
+                            <div class="col-sm-12 nopadding no-border-left">
+                                <div class="form-group">
+                                    @Html.Label("Shortcut Key : F10 - Save, ESC - Close", new { id = "lblShortcutKey", @class = "control-label col-sm-12 nopadding dt-center" })
+                                </div>
+                            </div>
+                            <div class="col-sm-12 nopadding no-border-left">
+                                <div class="form-group">
+                                    <div class="col-sm-2 no-border-left div-grey" style="height:28px;">
+
+                                    </div>
+                                    <div class="col-sm-4">
+                                        <button type="button" id="btnSubmitReferredByRegistrationForm" disabled class="btn btn-primary btn-small form-control input-sm">Save</button>
+                                    </div>
+                                    <div class="col-sm-4">
+                                        <button type="button" data-dismiss="modal" class="btn btn-secondary btn-small form-control input-sm">Close</button>
+                                    </div>
+                                    <div class="col-sm-2 div-grey" style="height:28px;">
+
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@*<div id="divServiceChargeSplitUp" style="display:none">
+    @using (Ajax.BeginForm("", "", new AjaxOptions { HttpMethod = "Post" }, new { id = "frmServiceChargeSplitUp", @class = "form-validate" }))
+    {
+        <div class="col-sm-12 nopadding">
+            <div class='form-horizontal form-column form-bordered' style="border-top: 1px solid #ddd; border-right: 1px solid #ddd; background: #f6f6f6;">
+                <div class="col-sm-12 nopadding">
+                    <div class="form-group">
+                        @Html.Label("Service", new { @class = "control-label right col-sm-2" })
+                        <div class="col-sm-10">
+                            <span id="txtServiceName" class="form-control input-sm"></span>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-sm-12 nopadding">
+                    <div class="form-group">
+                        <div class="col-sm-6 div-grey" style=""></div>
+                        @Html.Label("Applied", new { @class = "control-label right col-sm-2" })
+                        @Html.Label("Discount", new { @class = "control-label right col-sm-2" })
+                        @Html.Label("Final", new { @class = "control-label right col-sm-2" })
+                    </div>
+                </div>
+                <div class="col-sm-12 nopadding">
+                    <div class="form-group">
+                        @Html.Label("Hospital", new { @class = "control-label right col-sm-2" })
+                        @Html.Label(" ", new { @class = "control-label right col-sm-4" })
+                        <div class="col-sm-2">
+                            <div class="input-group">
+                                <span class="input-group-addon"><i class="fa fa-inr"></i></span>
+                                <span id="txtHospitalOriginalAmount" class="form-control input-sm font-bold dt-right"></span>
+                            </div>
+                        </div>
+                        <div class="col-sm-2">
+                            <div class="input-group">
+                                <span class="input-group-addon"><i class="fa fa-inr"></i></span>
+                                <span id="txtHospitalDiscount" class="form-control input-sm font-bold dt-right"></span>
+                            </div>
+                        </div>
+                        @if (Model.IsChargesSplitUpEditable == true)
+                        {
+                            <div class="col-sm-2">
+                                <div class="input-group">
+                                    <span class="input-group-addon"><i class="fa fa-inr"></i></span>
+                                    @Html.TextBox("SplitUpHospitalAmount", null, new { @class = "form-control input-sm font-bold clsInputSplitUpCharges inputmask-int" })
+                                </div>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="col-sm-2">
+                                <div class="input-group">
+                                    <span class="input-group-addon"><i class="fa fa-inr"></i></span>
+                                    <span id="txtHospitalAmount" class="form-control input-sm font-bold dt-right"></span>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+                <div id="divSplitUpConsultantAmount" class="col-sm-12 nopadding">
+                    <div class="form-group">
+                        @Html.Label("Consultant", new { @class = "control-label right col-sm-2" })
+                        <div class="col-sm-4">
+                            <span id="txtConsultantServiceName" class="form-control input-sm"></span>
+                        </div>
+                        <div class="col-sm-2">
+                            <div class="input-group">
+                                <span class="input-group-addon"><i class="fa fa-inr"></i></span>
+                                <span id="txtConsultantOriginalAmount" class="form-control input-sm font-bold dt-right"></span>
+                            </div>
+                        </div>
+                        <div class="col-sm-2">
+                            <div class="input-group">
+                                <span class="input-group-addon"><i class="fa fa-inr"></i></span>
+                                <span id="txtConsultantDiscount" class="form-control input-sm font-bold dt-right"></span>
+                            </div>
+                        </div>
+                        @if (Model.IsChargesSplitUpEditable == true)
+                        {
+                            <div class="col-sm-2">
+                                <div class="input-group">
+                                    <span class="input-group-addon"><i class="fa fa-inr"></i></span>
+                                    @Html.TextBox("SplitUpConsultantAmount", null, new { @class = "form-control input-sm font-bold clsInputSplitUpCharges inputmask-int" })
+                                </div>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="col-sm-2">
+                                <div class="input-group">
+                                    <span class="input-group-addon"><i class="fa fa-inr"></i></span>
+                                    <span id="txtConsultantAmount" class="form-control input-sm font-bold dt-right"></span>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+                <div id="divSplitUpAnaesthetistAmount" class="col-sm-12 nopadding">
+                    <div class="form-group">
+                        @Html.Label("Anaesthetist", new { @class = "control-label right col-sm-2" })
+                        <div class="col-sm-4">
+                            <span id="txtAnaesthetistServiceName" class="form-control input-sm"></span>
+                        </div>
+                        <div class="col-sm-2">
+                            <div class="input-group">
+                                <span class="input-group-addon"><i class="fa fa-inr"></i></span>
+                                <span id="txtAnaesthetistOriginalAmount" class="form-control input-sm font-bold dt-right"></span>
+                            </div>
+                        </div>
+                        <div class="col-sm-2">
+                            <div class="input-group">
+                                <span class="input-group-addon"><i class="fa fa-inr"></i></span>
+                                <span id="txtAnaesthetistDiscount" class="form-control input-sm font-bold dt-right"></span>
+                            </div>
+                        </div>
+                        @if (Model.IsChargesSplitUpEditable == true)
+                        {
+                            <div class="col-sm-2">
+                                <div class="input-group">
+                                    <span class="input-group-addon"><i class="fa fa-inr"></i></span>
+                                    @Html.TextBox("SplitUpAnaesthetistAmount", null, new { @class = "form-control input-sm font-bold clsInputSplitUpCharges inputmask-int" })
+                                </div>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="col-sm-2">
+                                <div class="input-group">
+                                    <span class="input-group-addon"><i class="fa fa-inr"></i></span>
+                                    <span id="txtAnaesthetistAmount" class="form-control input-sm font-bold dt-right">250.00</span>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+                <div id="divSplitUpAnaesthetistAmount" class="col-sm-12 nopadding">
+                    <div class="form-group">
+                        @Html.Label("Total", new { @class = "control-label right col-sm-6" })
+                        <div class="col-sm-2">
+                            <div class="input-group">
+                                <span class="input-group-addon"><i class="fa fa-inr"></i></span>
+                                <span id="txtTotalSplitUpOriginal" class="form-control input-sm font-bold dt-right"></span>
+                            </div>
+                        </div>
+                        <div class="col-sm-2">
+                            <div class="input-group">
+                                <span class="input-group-addon"><i class="fa fa-inr"></i></span>
+                                <span id="txtTotalSplitUpDiscount" class="form-control input-sm font-bold dt-right"></span>
+                            </div>
+                        </div>
+                        <div class="col-sm-2">
+                            <div class="input-group">
+                                <span class="input-group-addon"><i class="fa fa-inr"></i></span>
+                                <span id="txtTotalSplitUpAmount" class="form-control input-sm font-bold dt-right"></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                @if (Model.IsChargesSplitUpEditable == true)
+                {
+                    <div class="col-sm-12 nopadding">
+                        <div class="form-group">
+                            @Html.Label(" ", new { @class = "control-label right col-sm-10" })
+                            <div class="col-sm-2">
+                                <input type="button" value="Update" id="btnUpdateSplitUpCharges" class="btn btn-primary btn-small form-control input-sm" />
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+</div>*@
+<div id="divCreditAdjustmentDetails" style="display:none">
+    <div class="col-sm-12 nopadding">
+        <div class='form-horizontal form-column form-bordered' style="border-top: 1px solid #ddd; border-right: 1px solid #ddd; background: #f6f6f6;">
+            <div class="col-sm-12 nopadding" style="border-bottom:1px solid #ddd;">
+                <table id="BMS-Billing-CreditAdjustmentGrid" class="table table-hover table-nomargin table-bordered table-striped table-condensed nopadding" style="margin-bottom:0px;"></table>
+            </div>
+            <div class="col-sm-12 nopadding" style="border-bottom:1px solid #ddd;">
+                <div class="col-sm-12 nopadding" style="border-left:0px;">
+                    <div class="form-group" style="border-bottom:0;">
+                        @Html.Label("Net Amount", new { @class = "control-label right col-sm-10 font-bold" })
+                        <div class="col-sm-2">
+                            <div class="input-group">
+                                <span class="input-group-addon"><i class="fa fa-inr"></i></span>
+                                <span id="txtCreditAdjustmentNetAmount" class="form-control input-sm font-bold" style="text-align:right;"></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<div id="divAdvanceAdjustmentDetails" style="display:none">
+    <div class="col-sm-12 nopadding">
+        <div class='form-horizontal form-column form-bordered' style="border-top: 1px solid #ddd; border-right: 1px solid #ddd;">
+            <div class="col-sm-12 nopadding" style="border-bottom:1px solid #ddd;">
+                <table id="BMS-Billing-AdvanceAdjustmentGrid" class="table table-hover table-nomargin table-bordered table-striped table-condensed nopadding" style="margin-bottom:0px;"></table>
+            </div>
+            <div class="col-sm-12 nopadding" style="border-bottom:1px solid #ddd;">
+                <div class="col-sm-12 nopadding" style="border-left:0px;">
+                    <div class="form-group" style="border-bottom:0;">
+                        @Html.Label("Net Amount", new { @class = "control-label right col-sm-9 font-bold" })
+                        <div class="col-sm-3">
+                            <div class="input-group">
+                                <span class="input-group-addon"><i class="fa fa-inr"></i></span>
+                                @Html.TextBox("txtAdvanceAdjustmentNetAmount", null, new { Readonly = true, @class = "form-control input-sm font-bold inputmask-decimal" })
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="ControllerUrl" data-request-url="@Url.Action("ActionName", "PatientBillDetails", new { area = "BMS" })"></div>
+
+@section scripts{
+    @Scripts.Render("~/Scripts/BMS/PatientBillDetails")
+    <script type="text/javascript">
+        $(document).ready(function () {
+            $('#BrowserTabID').val('@Guid.NewGuid().ToString()');
+            OnCreatePageLoad();
+        });
+    </script>
+}
+--==========================================================================INDEX==========================================================================================
+@{
+    ViewBag.Title = "Patient Bill Details";
+    Layout = "~/Views/Shared/_LayoutV3.cshtml";
+}
+
+<div class="breadcrumbs">
+    <div class="btntopheader">
+        <a href="@Url.Action("Create", "PatientBillDetails", new { area = "BMS" })">
+            <i class="fa fa-plus-circle fa-fw">
+            </i>&nbsp;Add Bill
+        </a>
+    </div>
+    <ul>
+        <li><a>Billing</a><i class="fa fa-angle-right"></i></li>
+        <li><a>Transactions</a><i class="fa fa-angle-right"></i></li>
+        <li><a>Patient Bill Details</a></li>
+    </ul>
+</div>
+<div class="col-sm-12 box box-bordered nopadding">
+    @if (TempData["ErrorMessage"] != null)
+    {
+        <div class="alert alert-danger alert-dismissable">
+            <button type="button" class="close btn-close-auto" data-dismiss="alert"><i class="fa fa-times-circle-o"></i></button>
+            <strong>Error!&nbsp;</strong>&nbsp;@Html.Raw(TempData["ErrorMessage"])
+        </div>
+    }
+    @if (TempData["WarningMessage"] != null)
+    {
+        <div class="alert alert-warning alert-dismissable">
+            <button type="button" class="close btn-close-auto" data-dismiss="alert"><i class="fa fa-times-circle-o"></i></button>
+            <strong>Warning!&nbsp;</strong>&nbsp;@Html.Raw(TempData["WarningMessage"])
+        </div>
+    }
+    @if (TempData["SuccessMessage"] != null)
+    {
+        <div class="alert alert-success alert-dismissable">
+            <button type="button" class="close btn-close-auto" data-dismiss="alert"><i class="fa fa-times-circle-o"></i></button>
+            <strong>Success!&nbsp;</strong>&nbsp;@Html.Raw(TempData["SuccessMessage"])
+        </div>
+    }
+</div>
+<div class="col-sm-12 nopadding">
+    <div class="box box-bordered nopadding">
+        <div class="box-content nopadding">
+            <table id="BMS-Billing-IndexGrid" class="table table-hover table-nomargin table-bordered table-striped table-condensed dataTable dataTable-scroller dataTable-column_filter"
+                   data-column_filter_types="null,null,null,text,daterange,null,select,null,text,text,null,select,select,select,null,null,null">
+                <thead>
+                    <tr>
+                        <th>SN</th>
+                        <th>ServiceInvoiceID</th>
+                        <th></th>
+                        <th>Bill No</th>
+                        <th>Date</th>
+                        <th>BillingSection</th>
+                        <th>BillType</th>
+                        <th align="right">Net Amount <i class="fa fa-inr"></i></th>
+                        <th>Registration No</th>
+                        <th>Patient Name</th>
+                        <th>Plan</th>
+                        <th>HospitalName</th>
+                        <th>ReferredByName</th>
+                        <th>StatusText</th>
+                        <th></th>
+                        <th></th>
+                    </tr>
+                </thead>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div id="ControllerUrl" data-request-url="@Url.Action("ActionName", "PatientBillDetails", new { area = "BMS" })"></div>
+
+@section scripts{
+    @Scripts.Render("~/Scripts/BMS/PatientBillDetails")
+    <script type="text/javascript">
+$(document).ready(function () {
+    OnIndexPageLoad();
+});
+    </script>
+}
+--==================================================================Controller==================================================================================================
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Web.Mvc;
+using QuraHMS.Areas.Common.Models;
+using QuraHMS.Entity.Common;
+using QuraHMS.Entity.BMS;
+//using QuraHMS.Entity.IMS;
+using QuraHMS.Entity.Admin;
+using QuraHMS.Provider.Common;
+using QuraHMS.Provider.BMS;
+using QuraHMS.Provider.Admin;
+namespace QuraHMS.Areas.BMS.Controllers
+{
+    public class PatientBillDetailsController : Controller
+    {
+        [HttpGet]
+        [AuthorizeWithSession(AreaName = "BMS", ControllerName = "PatientBillDetails", ActionType = CRUD.Read, MakeLog = true)]
+        public ActionResult Index()
+        {
+            ViewBag.ShortcutKeys = "Shortcut Keys:&nbsp;&nbsp;&nbsp;&nbsp;F2-Add Bill";
+            return View();
+        }
+
+        [HttpPost]
+        [AuthorizeWithSession(IsAuthenticationOnly = true)]
+        public JsonResult PopulateGrid([ModelBinder(typeof(DTModelBinder))]DTParameterModel requestModel)
+        {
+            int TotalRecords = 0;
+            clsSession cSession = new clsSession();
+            DataTableParameter DTParameter = new DataTableParameter();
+            DateConversion _DateConversion = new DateConversion();
+            PatientBillDetails model = new PatientBillDetails();
+            PatientBillDetailsProvider uProvider = new PatientBillDetailsProvider();
+            List<PatientBillDetails> lst = new List<PatientBillDetails>();
+            var SearchList = requestModel.Columns.ToList();
+            var OrderList = requestModel.Order.ToList();
+            DTParameter.StartRowNo = requestModel.Start + 1;
+            DTParameter.EndRowNo = (requestModel.Start + requestModel.Length);
+            DTParameter.SortColumn = SearchList[OrderList[0].Column].Data;
+            DTParameter.SortDirection = OrderList[0].Dir;
+            model.ServiceInvoiceNo = SearchList[3].Search.Value;
+            _DateConversion = _DateConversion.ConvertBetweenDateNullable(SearchList[4].Search.Value.Split('X').ToList<string>());
+            model.FromDate = _DateConversion.FromDate;
+            model.ToDate = _DateConversion.ToDate;
+            //model.PatientBillDetailsSectionText = SearchList[5].Search.Value;
+            //model.BillTypeText = SearchList[6].Search.Value;
+            //model.RegistrationNo = SearchList[8].Search.Value;
+            model.PatientName = SearchList[9].Search.Value;
+            model.HospitalName = SearchList[11].Search.Value;
+            model.ReferredByName = SearchList[12].Search.Value;
+            model.StatusText = SearchList[13].Search.Value;
+            //lst = uProvider.PopulateGrid(lst, model, DTParameter, cSession);
+            cSession.Dispose();
+
+            if (lst.Count > 0)
+            {
+                TotalRecords = lst[0].TotalRecords;
+            }
+            return Json(new
+            {
+                draw = requestModel.Draw,
+                recordsFiltered = TotalRecords,
+                data = lst
+            });
+        }
+
+        [HttpGet]
+        [AuthorizeWithSession(AreaName = "BMS", ControllerName = "PatientBillDetails", ActionType = CRUD.Create, MakeLog = true)]
+        public ActionResult Create()
+        {
+            var model = new PatientBillDetails();
+            if (TempData["BMS_PatientBillDetails"] != null)
+            {
+                model = (PatientBillDetails)TempData["BMS_PatientBillDetails"];
+            }
+            model = GetSettings(model);
+            model = EditUpdate(model, "Create");
+            return View(model);
+        }
+
+        private PatientBillDetails GetSettings(PatientBillDetails model)
+        {
+            clsSession cSession = new clsSession();
+            PatientBillDetailsProvider uProvider = new PatientBillDetailsProvider();
+            //model = uProvider.GetSettings(model, cSession);
+            cSession.Dispose();
+            return model;
+        }
+
+        private PatientBillDetails EditUpdate(PatientBillDetails model, string ActionType)
+        {
+            List<DDLItem> lstPatientBillDetailsSection = GetStaticList("PatientBillDetailsSection");
+            var PatientBillDetailsSectionList = new SelectList(lstPatientBillDetailsSection, "Value", "Text");
+            //model.PatientBillDetailsSectionList = PatientBillDetailsSectionList;
+
+            //List<BillTypeMaster> lstBillType = GetBillTypeList("PatientBillDetails", "ForBill");
+            //var BillTypeList = new SelectList(lstBillType, "BillTypeID", "BillTypeName");
+            //model.BillTypeList = BillTypeList;
+
+            //List<DiscountReasonMaster> lstDiscountReason = GetDiscountReasonList();
+            //var DiscountReasonList = new SelectList(lstDiscountReason, "DiscountReasonID", "DiscountReasonName");
+            //model.DiscountReasonList = DiscountReasonList;
+
+            //List<StaffRegistration> lstDiscountApprovedBy = GetDiscountApprovedByList();
+            //var DiscountApprovedByList = new SelectList(lstDiscountApprovedBy, "StaffID", "StaffName");
+            //model.DiscountApprovedByList = DiscountApprovedByList;
+
+            //List<PaymentModeMaster> lstPaymentMode = GetPaymentModeList("HB", "MappedFor");
+            //var PaymentModeList = new SelectList(lstPaymentMode, "PaymentModeID", "PaymentModeName");
+            //model.PaymentModeList = PaymentModeList;
+
+            //List<BankMaster> lstBank = GetBankList();
+            //var BankList = new SelectList(lstBank, "BankID", "BankName");
+            //model.BankList = BankList;
+
+
+            //List<DDLItem> lstProcedureDoneBy = GetStaticList("ProcedureDoneBy");
+            //var ProcedureDoneByList = new SelectList(lstProcedureDoneBy, "Value", "Text");
+            //model.ProcedureDoneByList = ProcedureDoneByList;
+
+            List<DDLItem> lstPrefix = GetStaticList("PatientPrefix");
+            ViewBag.StaffPrefixList = new SelectList(lstPrefix, "Value", "Text");
+
+            List<PlanMaster> lstPlan = GetPlanList();
+            ViewBag.PlanList = new SelectList(lstPlan, "PlanID", "PlanName");
+
+            List<HospitalMaster> lstHospital = GetHospitalList();
+            ViewBag.HospitalList = new SelectList(lstHospital, "HospitalID", "HospitalName");
+
+            List<SelectListItem> DeliveryByList = new List<SelectListItem>();
+            DeliveryByList.Add(new SelectListItem { Value = "1", Text = "Personally" });
+            DeliveryByList.Add(new SelectListItem { Value = "2", Text = "Email" });
+            model.DeliveryByList = DeliveryByList;
+
+            List<DDLItem> lstSearchByOldPatient = GetStaticList("SearchByOldPatient");
+            ViewBag.SearchByOldPatientList = new SelectList(lstSearchByOldPatient, "Value", "Text");
+
+            if (ActionType == "Create")
+            {
+                ViewBag.Update = "Save";
+                ViewBag.Action = "Create";
+                ViewBag.ShortcutKeys = "Shortcut Keys:&nbsp;&nbsp;&nbsp;&nbsp;F10-Add&nbsp;&nbsp;&nbsp;&nbsp;F9-Save&nbsp;&nbsp;&nbsp;&nbsp;F8-Print&nbsp;&nbsp;&nbsp;&nbsp;F7-Reset&nbsp;&nbsp;&nbsp;&nbsp;F2-Back";
+
+                //model.dtServiceInvoiceDate = DateTime.Today;
+            }
+            model = PopulateFixList(model);
+
+            return model;
+        }
+        private List<HospitalMaster> GetHospitalList()
+        {
+            string ReturnMessage = string.Empty;
+            clsSession cSession = new clsSession();
+            List<HospitalMaster> lst = new List<HospitalMaster>();
+            HospitalMasterProvider uProvider = new HospitalMasterProvider();
+            lst = uProvider.PopulateGrid(lst, new HospitalMaster(), new DataTableParameter(), cSession, "SelectList");
+            cSession.Dispose();
+            return lst;
+        }
+        private List<PlanMaster> GetPlanList()
+        {
+            string ReturnMessage = string.Empty;
+            clsSession cSession = new clsSession();
+            List<PlanMaster> lst = new List<PlanMaster>();
+            PlanMasterProvider uProvider = new PlanMasterProvider();
+            lst = uProvider.PopulateGrid(lst, new PlanMaster(), new DataTableParameter(), cSession, "SelectList", out ReturnMessage);
+            cSession.Dispose();
+            return lst;
+        }
+        private PatientBillDetails PopulateFixList(PatientBillDetails model)
+        {
+            
+
+            List<SelectListItem> SexList = new List<SelectListItem>();
+            SexList.Add(new SelectListItem { Value = "M", Text = "Male" });
+            SexList.Add(new SelectListItem { Value = "F", Text = "Female" });
+            model.SexList = SexList;
+
+            List<SelectListItem> AgeValList = new List<SelectListItem>();
+            AgeValList.Add(new SelectListItem { Value = "Y", Text = "YEARS" });
+            AgeValList.Add(new SelectListItem { Value = "M", Text = "MONTHS" });
+            AgeValList.Add(new SelectListItem { Value = "D", Text = "DAYS" });
+            model.AgeValList = AgeValList;
+
+            return model;
+        }
+
+        private List<DDLItem> GetStaticList(string FieldName)
+        {
+            clsSession cSession = new clsSession();
+            List<DDLItem> lst = new List<DDLItem>();
+            SelectListProvider uProvider = new SelectListProvider();
+            lst = uProvider.GetStaticList(lst, "BMS", "Billing", FieldName, cSession);
+            cSession.Dispose();
+            return lst;
+        }
+
+        private List<BillTypeMaster> GetBillTypeList(string StringParameter, string PopulateType)
+        {
+            clsSession cSession = new clsSession();
+            List<BillTypeMaster> lst = new List<BillTypeMaster>();
+            BillTypeMasterProvider uProvider = new BillTypeMasterProvider();
+            lst = uProvider.PopulateGrid(lst, StringParameter, cSession, PopulateType);
+            cSession.Dispose();
+            return lst;
+        }
+
+        [HttpPost]
+        [AuthorizeWithSession(IsAuthenticationOnly = true)]
+        public JsonResult GetBillingDetails(PatientBillDetails model)
+        {
+            string ReturnMessage = string.Empty;
+            if ( model.ServiceInvoiceID > 0 && !string.IsNullOrEmpty(model.BillNo))
+            {
+                clsSession cSession = new clsSession();
+                PatientBillDetailsProvider uProvider = new PatientBillDetailsProvider();
+                model = uProvider.GetBillingDetails(model, cSession, out ReturnMessage);
+                cSession.Dispose();
+            }
+            return Json(new
+            {
+                ReturnMessage = ReturnMessage,
+                model = model
+            });
+        }
+
+        [HttpPost]
+        [AuthorizeWithSession(IsAuthenticationOnly = true)]
+        public JsonResult GetReferredBy(ReferredByRegistration model)
+        {
+            string ReturnMessage = string.Empty;
+            List<ReferredByRegistration> lst = new List<ReferredByRegistration>();
+
+            if (!string.IsNullOrEmpty(model.ReferredByName))
+            {
+                clsSession cSession = new clsSession();
+                ReferredByRegistrationProvider uProvider = new ReferredByRegistrationProvider();
+                lst = uProvider.PopulateGrid(lst, model, new DataTableParameter(), cSession, "AutoSuggest", out ReturnMessage);
+                cSession.Dispose();
+            }
+            return Json(new
+            {
+                ReturnMessage = ReturnMessage,
+                lst = lst
+            });
+        }
+        public JsonResult GetServiceDetails(PatientBillDetails model)
+        {
+            string ReturnMessage = string.Empty;
+            List<PatientBillDetails> lst = new List<PatientBillDetails>();
+            if (model.ServiceInvoiceID > 0)
+            {
+                clsSession cSession = new clsSession();
+                PatientBillDetailsProvider uProvider = new PatientBillDetailsProvider();
+                lst = uProvider.GetServiceDetails(lst, model, cSession, out ReturnMessage);
+                cSession.Dispose();
+            }
+            return Json(new
+            {
+                ReturnMessage = ReturnMessage,
+                lst = lst.ToArray()
+            });
+        }
+
+      
+        [HttpPost]
+        [AuthorizeWithSession(IsAuthenticationOnly = true)]
+        public JsonResult GetPatientBillDetails(string ServiceInvoiceNo)
+        {
+            List<PatientBillDetails> lst = new List<PatientBillDetails>();
+           
+            if (!string.IsNullOrEmpty(ServiceInvoiceNo))
+            {
+                clsSession cSession = new clsSession();
+                PatientBillDetailsProvider uProvider = new PatientBillDetailsProvider();
+                lst = uProvider.GetPatientBillDetails(lst, ServiceInvoiceNo, cSession);
+                cSession.Dispose();
+            }
+           
+            return Json(lst.ToArray());
+        }
+
+       
+
+
+        [HttpPost]
+        [AuthorizeWithSession(IsAuthenticationOnly = true)]
+        public JsonResult SubmitListData(string BrowserTabID, List<PatientBillDetails> ServiceList)
+        {
+            Session["BMS_PatientBillDetails_ServiceList_" + BrowserTabID] = ServiceList;
+            return Json("Saved");
+        }
+
+        [HttpPost]
+        [AuthorizeWithSession(AreaName = "BMS", ControllerName = "PatientBillDetails", ActionType = CRUD.Create)]
+        public JsonResult Create(PatientBillDetails model)
+        {
+            string ReturnMessage = string.Empty;
+            try
+            {
+                /* Validate the Model */
+                if (ModelState.IsValid)
+                {
+                    if (Session["BMS_PatientBillDetails_ServiceList_" + model.BrowserTabID] != null)
+                    {
+                        model.lstServiceDetail = Session["BMS_PatientBillDetails_ServiceList_" + model.BrowserTabID] as List<PatientBillDetails>;
+                        
+                        /* Final Check & Save */
+                        if (string.IsNullOrEmpty(ReturnMessage))
+                        {
+                            if (model.files != null && model.files.ContentLength > 0)
+                            {
+                                model.FileSize = Convert.ToDecimal(model.files.ContentLength);
+                                model.FileType = System.IO.Path.GetExtension(model.files.FileName);
+                            }
+
+
+                            /* Finally Save the Data */
+                            clsSession cSession = new clsSession();
+                            clsReturnMessage cMsg = new clsReturnMessage();
+                            PatientBillDetailsProvider uProvider = new PatientBillDetailsProvider();
+                            cMsg = uProvider.SaveRecord(model, cSession, cMsg);
+                            cSession.Dispose();
+                            ReturnMessage = cMsg.ReturnMessage;
+
+                            if (ReturnMessage == "Saved")
+                            {
+                                ModelState.Clear();
+                                PatientBillDetails newModel = new PatientBillDetails();
+                                newModel.ServiceInvoiceNo = cMsg.ReturnCode;
+                                //newModel.IsAutoPrint = model.IsAutoPrint;
+
+                                TempData["BMS_PatientBillDetails"] = newModel;
+                                TempData["SuccessMessage"] = "Bill Generated Successfully. Bill No. : " + cMsg.ReturnCode;
+
+                                if (model.files != null)
+                                {
+
+                                    model.files.SaveAs(cMsg.ReturnFilePath);
+                                }
+                            }
+                        }
+
+                    }
+                    else
+                    {
+                        ReturnMessage = "NULLList";
+                    }
+                }
+                else
+                {
+                    ReturnMessage = "Please review the following warning.";
+                    foreach (ModelState modelState in ViewData.ModelState.Values)
+                    {
+                        foreach (ModelError error in modelState.Errors)
+                        {
+                            ReturnMessage = ReturnMessage + "<br />" + error.ErrorMessage;
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                ReturnMessage = ex.Message;
+            }
+            finally
+            {
+                Session.Remove("BMS_PatientBillDetails_ServiceList_" + model.BrowserTabID);
+            }
+            return Json(ReturnMessage);
+        }
+
+        [HttpPost]
+        [AuthorizeWithSession(AreaName = "BMS", ControllerName = "PatientBillDetails", ActionType = CRUD.Delete, MakeLog = true)]
+        public JsonResult Cancel(int? ServiceInvoiceID, string CancellationReason)
+        {
+            string rResult = "ModelInvalid";
+            if (ServiceInvoiceID > 0 && !(string.IsNullOrEmpty(CancellationReason)))
+            {
+                clsSession cSession = new clsSession();
+                clsReturnMessage cMsg = new clsReturnMessage();
+                PatientBillDetailsProvider uProvider = new PatientBillDetailsProvider();
+                cMsg = uProvider.CancelRecord(ServiceInvoiceID, CancellationReason, cSession, cMsg);
+                cSession.Dispose();
+                rResult = cMsg.ReturnMessage;
+            }
+            return Json(rResult);
+        }
+
+        /* Print Actions */
+
+        [HttpGet]
+        [AuthorizeWithSession(IsAuthenticationOnly = true)]
+        public ActionResult PrintBill(string ServiceInvoiceNo)
+        {
+            ViewBag.PrintTitle = ServiceInvoiceNo + " - Bill Detail";
+
+            PrintHTML model = new PrintHTML();
+            if (!string.IsNullOrEmpty(ServiceInvoiceNo))
+            {
+                clsSession cSession = new clsSession();
+                PatientBillDetailsProvider uProvider = new PatientBillDetailsProvider();
+                model = uProvider.PrintBill(model, ServiceInvoiceNo, cSession);
+                cSession.Dispose();
+            }
+            return View("PrintHTML", model);
+        }
+
+    }
+}
+--==================================================================Entity==================================================================================================
+using System;
+using System.Collections.Generic;
+using System.Web.Mvc;
+using System.ComponentModel.DataAnnotations;
+using Foolproof;
+using System.Web;
+
+namespace QuraHMS.Entity.BMS
+{
+    public class PatientBillDetails
+    {
+        [Display(Name = "LMP Date")]
+
+        public string BillNo { get; set; }
+        public string BillDate { get; set; }
+        public string chkServiceType { get; set; }
+
+        [Display(Name = "File")]
+        public HttpPostedFileBase files { get; set; }
+        public string strFilePath { set; get; }
+
+        public decimal? FileSize { get; set; }
+        public string FileType { get; set; }
+
+        [Display(Name = "Bill No.")]
+        public string ServiceInvoiceNo { get; set; }
+        public int? ServiceInvoiceID { get; set; }
+        public string BrowserTabID { get; set; }
+        //Billing Information
+        //[Display(Name = "Date & Time")]
+        //[RequiredIfTrue("IsBillingDateEditable", ErrorMessage = "Bill Date is Required")]
+        //public DateTime? dtServiceInvoiceDate { get; set; }
+        //public bool IsBillingDateEditable { get; set; }
+        //public string ServiceInvoiceDateTime { get; set; }
+        //public string ServiceInvoiceTime { get; set; }
+
+
+        [Display(Name = "Referred By")]
+        public string ReferredByName { get; set; }
+        public int? ReferredByID { get; set; }
+
+        
+        [Display(Name = "Registration No")]
+        public string RegistrationNo { get; set; }
+        public int? RegistrationID { get; set; }
+
+        [Display(Name = "Date & Time")]
+        public string RegistrationDateTime { get; set; }
+
+
+        [Display(Name = "Prefix")]
+        [Required(ErrorMessage = "Please Select Prefix")]
+        public string PatientPrefix { get; set; }
+
+        [Display(Name = "Name")]
+        [Required(ErrorMessage = "Patient Name is Required")]
+        public string PatientName { get; set; }
+        public int? PID { get; set; }
+
+        [Display(Name = "Address")]
+        public string PatientAddress { get; set; }
+
+        [Display(Name = "City")]
+        [Required(ErrorMessage = "City is Required")]
+        public string PatientCity { get; set; }
+
+        [Display(Name = "Mobile No")]
+        [RegularExpression(@"^[0-9]{10}?$", ErrorMessage = "Please provide correct mobile number")]
+        public string PatientMobileNo { get; set; }
+
+        [Display(Name = "Email ID")]
+        [DataType(DataType.EmailAddress)]
+        [RequiredIf("DeliveryBy", Operator.EqualTo, 2, ErrorMessage = "Email is Required")]
+        [RegularExpression(@"^([a-zA-Z0-9_\.\-])+\@(([a-zA-Z0-9\-])+\.)+([a-zA-Z0-9]{2,4})+$", ErrorMessage = "Please provide correct E-Mail address")]
+        public string PatientEmailID { get; set; }
+
+        [Display(Name = "Age")]
+        [Required(ErrorMessage = "Age is Required")]
+        [Range(0, 150, ErrorMessage = "Age should be between 1 and 150.")]
+        public int? Age { get; set; }
+        [Required(ErrorMessage = "Age Value is Required")]
+        public string AgeVal { get; set; }
+        public IEnumerable<SelectListItem> AgeValList { get; set; }
+        [Required(ErrorMessage = "Sex is Required")]
+        public string Sex { get; set; }
+        public IEnumerable<SelectListItem> SexList { get; set; }
+
+        [Display(Name = "Age/Sex")]
+        public string AgeSex { get; set; }
+
+        [Display(Name = "Plan")]
+        [Required(ErrorMessage = "Plan is Required")]
+        public int? PlanID { get; set; }
+        public string PlanName { get; set; }
+
+        [Display(Name = "Ref Hospital")]
+        public int? HospitalID { get; set; }
+        public string HospitalName { get; set; }
+
+        [Display(Name = "Hosp. Reg. No")]
+        public string HospRegistrationNo { get; set; }
+
+        [Display(Name = "Delivery By")]
+        public string DeliveryBy { get; set; }
+        public int? DeliveryByID { get; set; }
+        public IEnumerable<SelectListItem> DeliveryByList { get; set; }
+
+        [Display(Name = "Sub Total Amount")]
+        public decimal? SubTotalAmount { get; set; }
+
+        [Display(Name = "Total Cash Discount")]
+        public decimal? TotalCashDiscountAmount { get; set; }
+
+        [Display(Name = "Discount")]
+        public decimal? DiscountPercent { get; set; }
+
+        [Display(Name = "Discount")]
+        public decimal? DiscountAmount { get; set; }
+
+        [Display(Name = "Net Amount")]
+        public decimal? NetAmount { get; set; }
+
+      
+
+        [Display(Name = "Narration")]
+        public string Narration { get; set; }
+
+        //Used For Add & Search Services
+        [Display(Name = "Service Type")]
+        public string ServiceType { get; set; }
+
+        [Display(Name = "Service Date")]
+        public string ServiceDate { get; set; }
+
+        [Display(Name = "Service Rate")]
+        public decimal? ServiceRate { get; set; }
+
+        [Display(Name = "Unit")]
+        public decimal? ServiceUnit { get; set; }
+
+        public List<PatientBillDetails> lstServiceDetail { get; set; }
+
+        [Display(Name = "Billing Section")]
+        public string BillingSection { get; set; }
+
+        [Display(Name = "ServiceDetailID")]
+        public int? ServiceDetailID { get; set; }
+        public int? ServiceRateID { get; set; }
+
+        [Display(Name = "ServiceID")]
+        public int? ServiceID { get; set; }
+
+        [Display(Name = "Service Code")]
+        public string ServiceCode { get; set; }
+
+        [Display(Name = "Service Name")]
+        public string ServiceName { get; set; }
+
+        public string ServiceTypeText { get; set; }
+        public string ConsultantServiceName { get; set; }
+        public string AnaesthetistServiceName { get; set; }
+
+
+        [Display(Name = "Service Rate")]
+        public decimal? ServiceRatePerUnit { get; set; }
+        public bool IsServiceRateEditable { get; set; }
+
+        [Display(Name = "Service Discount")]
+        public decimal? ServiceDiscountAmount { get; set; }
+
+        [Display(Name = "Service Amount")]
+        public decimal? ServiceAmount { get; set; }
+
+        [Display(Name = "Cash Discount")]
+        public decimal? CashDiscountAmount { get; set; }
+        public decimal? ServiceAmountAfterDiscount { get; set; }
+
+        [Display(Name = "Package")]
+        public int? PackageID { get; set; }
+        public string PackageName { get; set; }
+
+        [Display(Name = "Consultant")]
+        public string ConsultantName { get; set; }
+        public int? ConsultantID { get; set; }
+
+        //Used For Index Page
+        public int TotalRecords { get; set; }
+        public int RowID { get; set; }
+        public bool CanDelete { get; set; }
+        public DateTime? FromDate { get; set; }
+        public DateTime? ToDate { get; set; }
+
+        [Display(Name = "Created By")]
+        public string CreatedBy { get; set; }
+
+        [Display(Name = "Status")]
+        public string StatusText { get; set; }
+        public string HexValue { get; set; }
+
+       
+
+        
+    }
+
+}
+
+
+--===============================================================Provider=====================================================================================================
+using System;
+using System.Collections.Generic;
+using QuraHMS.Entity.BMS;
+using QuraHMS.Entity.Common;
+using QuraHMS.DAO.BMS;
+
+namespace QuraHMS.Provider.BMS
+{
+   public class PatientBillDetailsProvider
+    {
+        public List<PatientBillDetails> PopulateGrid(List<PatientBillDetails> lst, PatientBillDetails model, DataTableParameter DTParameter, clsSession cSession)
+        {
+            PatientBillDetailsDAO dao = new PatientBillDetailsDAO();
+            lst = dao.PopulateGrid(lst, model, DTParameter, cSession);
+            return lst;
+        }
+
+        public List<PatientBillDetails> GetPatientBillDetails(List<PatientBillDetails> lst, string ServiceInvoiceNo,clsSession cSession)
+        {
+            PatientBillDetailsDAO dao = new PatientBillDetailsDAO();
+            lst = dao.GetPatientBillDetails(lst, ServiceInvoiceNo, cSession);
+            return lst;
+        }
+
+        public List<PatientBillDetails> GetPatient(List<PatientBillDetails> lst, string PatientBillDetailsSection, int? SearchByOldPatient, string RegistrationNo, clsSession cSession)
+        {
+            PatientBillDetailsDAO dao = new PatientBillDetailsDAO();
+            lst = dao.GetPatient(lst, PatientBillDetailsSection, SearchByOldPatient, RegistrationNo, cSession);
+            return lst;
+        }
+
+        public PatientBillDetails GetBillingDetails(PatientBillDetails model, clsSession cSession, out string ReturnMessage)
+        {
+            PatientBillDetailsDAO dao = new PatientBillDetailsDAO();
+            model = dao.GetBillingDetails(model, cSession, out ReturnMessage);
+            return model;
+        }
+      
+        public List<PatientBillDetails> GetServiceDetails(List<PatientBillDetails> lst, PatientBillDetails model, clsSession cSession,  out string ReturnMessage)
+        {
+            PatientBillDetailsDAO dao = new PatientBillDetailsDAO();
+            lst = dao.GetServiceDetails(lst, model, cSession, out ReturnMessage);
+            return lst;
+        }
+
+       
+
+        //public clsReturnMessage DeletePatientService(int? ServiceAvailID, clsSession cSession, clsReturnMessage cMsg)
+        //{
+        //    PatientBillDetailsDAO dao = new PatientBillDetailsDAO();
+        //    cMsg = dao.DeletePatientService(ServiceAvailID, cSession, cMsg);
+        //    return cMsg;
+        //}
+
+        public clsReturnMessage SaveRecord(PatientBillDetails model, clsSession cSession, clsReturnMessage cMsg)
+        {
+            PatientBillDetailsDAO dao = new PatientBillDetailsDAO();
+            cMsg = dao.SaveRecord(model, cSession, cMsg);
+            return cMsg;
+        }
+
+        public clsReturnMessage CancelRecord(int? ServiceInvoiceID, string CancellationReason, clsSession cSession, clsReturnMessage cMsg)
+        {
+            PatientBillDetailsDAO dao = new PatientBillDetailsDAO();
+            cMsg = dao.CancelRecord(ServiceInvoiceID, CancellationReason, cSession, cMsg);
+            return cMsg;
+        }
+
+        public PatientBillDetails GetSettings(PatientBillDetails model, clsSession cSession)
+        {
+            PatientBillDetailsDAO dao = new PatientBillDetailsDAO();
+            model = dao.GetSettings(model, cSession);
+            return model;
+        }
+
+
+        public PrintHTML PrintBill(PrintHTML model, string ServiceInvoiceNo, clsSession cSession)
+        {
+            PatientBillDetailsDAO dao = new PatientBillDetailsDAO();
+            model = dao.PrintBill(model, ServiceInvoiceNo, cSession);
+            return model;
+        }
+
+    }
+}
+
+--============================================================DAO========================================================================================================
+using System;
+using System.Collections.Generic;
+using System.Threading;
+using System.Data;
+using System.Data.SqlClient;
+using QuraHMS.DAO.Common;
+using QuraHMS.Entity.Common;
+using QuraHMS.Entity.BMS;
+
+namespace QuraHMS.DAO.BMS
+{
+    public class PatientBillDetailsDAO
+    {
+        public List<PatientBillDetails> PopulateGrid(List<PatientBillDetails> lst, PatientBillDetails model, DataTableParameter DTParameter, clsSession cSession)
+        {
+            DBConnect con = new DBConnect();
+            try
+            {
+                using (SqlCommand cmd = new SqlCommand())
+                {
+                    cmd.CommandType = CommandType.StoredProcedure;
+                    cmd.CommandText = "usp_BMS_Transactions_PatientBillDetails_PopulateGrid";
+                    cmd.Parameters.AddWithValue("@StartRowNo", DTParameter.StartRowNo);
+                    cmd.Parameters.AddWithValue("@EndRowNo", DTParameter.EndRowNo);
+                    cmd.Parameters.AddWithValue("@SortColumn", DTParameter.SortColumn);
+                    cmd.Parameters.AddWithValue("@SortDirection", DTParameter.SortDirection);
+                    if (string.IsNullOrEmpty(model.ServiceInvoiceNo))
+                    {
+                        cmd.Parameters.AddWithValue("@ServiceInvoiceNo", DBNull.Value);
+                    }
+                    else
+                    {
+                        cmd.Parameters.AddWithValue("@ServiceInvoiceNo", model.ServiceInvoiceNo.Trim());
+                    }
+                    if (!(model.FromDate.HasValue))
+                    {
+                        cmd.Parameters.AddWithValue("@FromDate", DBNull.Value);
+                    }
+                    else
+                    {
+                        cmd.Parameters.AddWithValue("@FromDate", model.FromDate);
+                    }
+                    if (!(model.ToDate.HasValue))
+                    {
+                        cmd.Parameters.AddWithValue("@ToDate", DBNull.Value);
+                    }
+                    else
+                    {
+                        cmd.Parameters.AddWithValue("@ToDate", model.ToDate);
+                    }
+                    //if (string.IsNullOrEmpty(model.PatientBillDetailsSectionText))
+                    //{
+                    //    cmd.Parameters.AddWithValue("@PatientBillDetailsSectionText", DBNull.Value);
+                    //}
+                    //else
+                    //{
+                    //    cmd.Parameters.AddWithValue("@PatientBillDetailsSectionText", model.PatientBillDetailsSectionText.Trim());
+                    //}
+                    //if (string.IsNullOrEmpty(model.BillTypeText))
+                    //{
+                    //    cmd.Parameters.AddWithValue("@BillTypeText", DBNull.Value);
+                    //}
+                    //else
+                    //{
+                    //    cmd.Parameters.AddWithValue("@BillTypeText", model.BillTypeText.Trim());
+                    //}
+
+
+                    if (string.IsNullOrEmpty(model.HospitalName))
+                    {
+                        cmd.Parameters.AddWithValue("@HospitalName", DBNull.Value);
+                    }
+                    else
+                    {
+                        cmd.Parameters.AddWithValue("@HospitalName", model.HospitalName.Trim());
+                    }
+
+                    if (string.IsNullOrEmpty(model.ReferredByName))
+                    {
+                        cmd.Parameters.AddWithValue("@ReferredByName", DBNull.Value);
+                    }
+                    else
+                    {
+                        cmd.Parameters.AddWithValue("@ReferredByName", model.ReferredByName.Trim());
+                    }
+
+
+                    //if (string.IsNullOrEmpty(model.RegistrationNo))
+                    //{
+                    //    cmd.Parameters.AddWithValue("@RegistrationNo", DBNull.Value);
+                    //}
+                    //else
+                    //{
+                    //    cmd.Parameters.AddWithValue("@RegistrationNo", model.RegistrationNo.Trim());
+                    //}
+                    if (string.IsNullOrEmpty(model.PatientName))
+                    {
+                        cmd.Parameters.AddWithValue("@PatientName", DBNull.Value);
+                    }
+                    else
+                    {
+                        cmd.Parameters.AddWithValue("@PatientName", model.PatientName.Trim());
+                    }
+                    if (string.IsNullOrEmpty(model.StatusText))
+                    {
+                        cmd.Parameters.AddWithValue("@StatusText", DBNull.Value);
+                    }
+                    else
+                    {
+                        cmd.Parameters.AddWithValue("@StatusText", model.StatusText.Trim());
+                    }
+                    cmd.Parameters.AddWithValue("@LoginID", cSession.UID);
+                    cmd.Parameters.AddWithValue("@CompanyID", cSession.CompanyID);
+                    con.OpenConnection();
+                    cmd.Connection = con.Connection;
+                    using (SqlDataReader sdr = cmd.ExecuteReader())
+                    {
+                        while (sdr.Read())
+                        {
+                            lst.Add(new PatientBillDetails
+                            {
+                                TotalRecords = Convert.ToInt32(sdr["TotalRecords"]),
+                                RowID = Convert.ToInt32(sdr["RowID"]),
+                                ServiceInvoiceID = Convert.ToInt32(sdr["ServiceInvoiceID"]),
+                                ServiceInvoiceNo = Convert.ToString(sdr["ServiceInvoiceNo"]),
+                                //ServiceInvoiceDateTime = Convert.ToDateTime(sdr["ServiceInvoiceDate"]).ToString("dd-MM-yyyy"),
+                                //PatientBillDetailsSection = Convert.ToString(sdr["PatientBillDetailsSection"]),
+                                //PatientBillDetailsSectionText = Convert.ToString(sdr["PatientBillDetailsSectionText"]),
+                                //BillTypeText = Convert.ToString(sdr["BillTypeText"]),
+                                //NetAmount = Convert.ToDecimal(sdr["NetAmount"]),
+                                //RegistrationNo = Convert.ToString(sdr["RegistrationNo"]),
+                                PatientName = Convert.ToString(sdr["PatientName"]),
+                                PlanName = Convert.ToString(sdr["PlanName"]),
+                                StatusText = Convert.ToString(sdr["StatusText"]),
+                                HospitalName = Convert.ToString(sdr["HospitalName"]),
+                                ReferredByName = Convert.ToString(sdr["ReferredByName"]),
+                                HexValue = Convert.ToString(sdr["HexValue"]),
+                                CanDelete = Convert.ToBoolean(sdr["CanDelete"])
+                            });
+                        }
+                    }
+                }
+            }
+            catch (SqlException ex)
+            {
+                using (clsLog mLog = new clsLog())
+                {
+                    mLog.AddToLog_Error(cSession.SessionLogID, Convert.ToString(ex.Message), "BMS_PatientBillDetailsDAO", "PopulateGrid");
+                }
+            }
+            catch (Exception ex)
+            {
+                using (clsLog mLog = new clsLog())
+                {
+                    mLog.AddToLog_Error(cSession.SessionLogID, Convert.ToString(ex.Message), "BMS_PatientBillDetailsDAO", "PopulateGrid");
+                }
+            }
+            finally
+            {
+                con.CloseConnection();
+                con.Dispose();
+            }
+            return lst;
+        }
+
+        public List<PatientBillDetails> GetPatient(List<PatientBillDetails> lst, string PatientBillDetailsSection, int? SearchByOldPatient, string RegistrationNo, clsSession cSession)
+        {
+            DBConnect con = new DBConnect();
+            try
+            {
+                using (SqlCommand cmd = new SqlCommand())
+                {
+                    cmd.CommandType = CommandType.StoredProcedure;
+                    cmd.CommandText = "usp_BMS_Transactions_PatientBillDetails_GetPatient";
+                    cmd.Parameters.AddWithValue("@PatientBillDetailsSection", PatientBillDetailsSection);
+                    cmd.Parameters.AddWithValue("@SearchByOldPatient", SearchByOldPatient);
+                    cmd.Parameters.AddWithValue("@RegistrationNo", RegistrationNo);
+                    cmd.Parameters.AddWithValue("@CompanyID", cSession.CompanyID);
+                    con.OpenConnection();
+                    cmd.Connection = con.Connection;
+                    using (SqlDataReader sdr = cmd.ExecuteReader())
+                    {
+                        while (sdr.Read())
+                        {
+                            lst.Add(new PatientBillDetails
+                            {
+                                PID = Convert.ToInt32(sdr["PID"]),
+                                RegistrationNo = Convert.ToString(sdr["RegistrationNo"]),
+                                PatientName = Convert.ToString(sdr["PatientName"]),
+                                PatientMobileNo = Convert.ToString(sdr["MobileNo"]),
+                                PatientAddress = Convert.ToString(sdr["PatientAddress"]),
+                                RegistrationDateTime = Convert.ToString(sdr["RegistrationDateTime"])
+                            });
+                        }
+                    }
+                }
+            }
+            catch (SqlException ex)
+            {
+                using (clsLog mLog = new clsLog())
+                {
+                    mLog.AddToLog_Error(cSession.SessionLogID, Convert.ToString(ex.Message), "BMS_PatientBillDetailsDAO", "GetPatient");
+                }
+            }
+            catch (Exception ex)
+            {
+                using (clsLog mLog = new clsLog())
+                {
+                    mLog.AddToLog_Error(cSession.SessionLogID, Convert.ToString(ex.Message), "BMS_PatientBillDetailsDAO", "GetPatient");
+                }
+            }
+            finally
+            {
+                con.CloseConnection();
+                con.Dispose();
+            }
+            return lst;
+        }
+
+
+        public List<PatientBillDetails> GetPatientBillDetails(List<PatientBillDetails> lst,  string ServiceInvoiceNo, clsSession cSession)
+        {
+            DBConnect con = new DBConnect();
+            try
+            {
+                using (SqlCommand cmd = new SqlCommand())
+                {
+                    cmd.CommandType = CommandType.StoredProcedure;
+                    cmd.CommandText = "usp_BMS_Transactions_PatientBillDetails_GetPatientBillDetails";
+                    cmd.Parameters.AddWithValue("@ServiceInvoiceNo", ServiceInvoiceNo);
+                    cmd.Parameters.AddWithValue("@LoginID", cSession.UID);
+                    cmd.Parameters.AddWithValue("@CompanyID", cSession.CompanyID);
+                    con.OpenConnection();
+                    cmd.Connection = con.Connection;
+                    using (SqlDataReader sdr = cmd.ExecuteReader())
+                    {
+                        while (sdr.Read())
+                        {
+                            lst.Add(new PatientBillDetails
+                            {
+                                ServiceInvoiceID = Convert.ToInt32(sdr["ServiceInvoiceID"]),
+                                BillNo = Convert.ToString(sdr["ServiceInvoiceNo"]),
+                                BillDate = Convert.ToString(sdr["ServiceInvoiceDate"]),
+                                PatientName = Convert.ToString(sdr["PatientName"]),
+                        });
+                        }
+                    }
+                }
+            }
+            catch (SqlException ex)
+            {
+                using (clsLog mLog = new clsLog())
+                {
+                    mLog.AddToLog_Error(cSession.SessionLogID, Convert.ToString(ex.Message), "BMS_PatientBillDetailsDAO", "GetPatientBillDetails");
+                }
+            }
+            catch (Exception ex)
+            {
+                using (clsLog mLog = new clsLog())
+                {
+                    mLog.AddToLog_Error(cSession.SessionLogID, Convert.ToString(ex.Message), "BMS_PatientBillDetailsDAO", "GetPatientBillDetails");
+                }
+            }
+            finally
+            {
+                con.CloseConnection();
+                con.Dispose();
+            }
+            return lst;
+        }
+
+       public PatientBillDetails GetBillingDetails(PatientBillDetails model, clsSession cSession, out string ReturnMessage)
+        {
+            DBConnect con = new DBConnect();
+            try
+            {
+                using (SqlCommand cmd = new SqlCommand())
+                {
+                    cmd.CommandType = CommandType.StoredProcedure;
+                    cmd.CommandText = "usp_BMS_Transactions_PatientBillDetails_GetBillingDetails";
+                    cmd.Parameters.AddWithValue("@ServiceInvoiceID", model.ServiceInvoiceID);
+                    cmd.Parameters.AddWithValue("@BillNo", model.BillNo);
+                    cmd.Parameters.AddWithValue("@CompanyID", cSession.CompanyID);
+                    con.OpenConnection();
+                    cmd.Connection = con.Connection;
+                    using (SqlDataReader dr = cmd.ExecuteReader())
+                    {
+                        while (dr.Read())
+                        {
+                            model.ServiceInvoiceID = Convert.ToInt32(dr["ServiceInvoiceID"]);
+                            model.BillNo = Convert.ToString(dr["ServiceInvoiceNo"]);
+                            model.BillDate = Convert.ToString(dr["ServiceInvoiceDate"]);
+                            model.BillingSection = Convert.ToString(dr["BillingSection"]);
+                            model.RegistrationID = Convert.ToInt32(dr["RegistrationID"]);
+                            model.HospitalID = Convert.ToInt32(dr["HospitalID"]);
+                            model.HospitalName = Convert.ToString(dr["HospitalName"]);
+                            model.HospRegistrationNo = Convert.ToString(dr["HospitalRegistrationNo"]);
+                            model.PlanID = Convert.ToInt32(dr["PlanID"]);
+                            model.DeliveryByID = Convert.ToInt32(dr["DeliveryBy"]);
+                            model.ReferredByID = Convert.ToInt32(dr["ReferredByID"]);
+                            model.ReferredByName = Convert.ToString(dr["ReferredByName"]);
+                           
+                            model.PatientPrefix = Convert.ToString(dr["Prefix"]);
+                            model.PatientName = Convert.ToString(dr["PatientName"]);
+                            model.Age = Convert.ToInt32(dr["Age"]);
+                            model.AgeVal = Convert.ToString(dr["AgeVal"]);
+                            model.Sex = Convert.ToString(dr["Sex"]);
+                            model.PatientAddress = Convert.ToString(dr["Address1"]);
+                            model.PatientCity = Convert.ToString(dr["City"]);
+                            model.PatientMobileNo = Convert.ToString(dr["MobileNo"]);
+                            model.PatientEmailID = Convert.ToString(dr["EMailID"]);
+                            model.SubTotalAmount = Convert.ToDecimal(dr["SubTotalAmount"]);
+
+
+                        }
+                    }
+                    ReturnMessage = "Success";
+                }
+            }
+            catch (SqlException ex)
+            {
+                ReturnMessage = Convert.ToString(ex.Message);
+                using (clsLog mLog = new clsLog())
+                {
+                    mLog.AddToLog_Error(cSession.SessionLogID, Convert.ToString(ex.Message), "BMS_PatientBillDetailsDAO", "GetBillingDetails");
+                }
+            }
+            catch (Exception ex)
+            {
+                ReturnMessage = Convert.ToString(ex.Message);
+                using (clsLog mLog = new clsLog())
+                {
+                    mLog.AddToLog_Error(cSession.SessionLogID, Convert.ToString(ex.Message), "BMS_PatientBillDetailsDAO", "GetBillingDetails");
+                }
+            }
+            finally
+            {
+                con.CloseConnection();
+                con.Dispose();
+            }
+            return model;
+        }
+
+        public PatientBillDetails GetRefHospitalDefaultPlanDetails(PatientBillDetails model, clsSession cSession, out string ReturnMessage)
+        {
+            DBConnect con = new DBConnect();
+            try
+            {
+                using (SqlCommand cmd = new SqlCommand())
+                {
+                    cmd.CommandType = CommandType.StoredProcedure;
+                    cmd.CommandText = "usp_BMS_Transactions_PatientBillDetails_GetRefHospitalDefaultPlanDetails";
+                    cmd.Parameters.AddWithValue("@HospitalID", model.HospitalID);
+                    cmd.Parameters.AddWithValue("@CompanyID", cSession.CompanyID);
+                    con.OpenConnection();
+                    cmd.Connection = con.Connection;
+                    using (SqlDataReader dr = cmd.ExecuteReader())
+                    {
+                        while (dr.Read())
+                        {
+                            model.PlanID = string.IsNullOrEmpty(Convert.ToString(dr["PlanID"])) ? (int?)null : Convert.ToInt32(dr["PlanID"]);
+                        }
+                    }
+                    ReturnMessage = "Success";
+                }
+            }
+            catch (SqlException ex)
+            {
+                ReturnMessage = Convert.ToString(ex.Message);
+                using (clsLog mLog = new clsLog())
+                {
+                    mLog.AddToLog_Error(cSession.SessionLogID, Convert.ToString(ex.Message), "BMS_PatientBillDetailsDAO", "GetRefHospitalDefaultPlanDetails");
+                }
+            }
+            catch (Exception ex)
+            {
+                ReturnMessage = Convert.ToString(ex.Message);
+                using (clsLog mLog = new clsLog())
+                {
+                    mLog.AddToLog_Error(cSession.SessionLogID, Convert.ToString(ex.Message), "BMS_PatientBillDetailsDAO", "GetRefHospitalDefaultPlanDetails");
+                }
+            }
+            finally
+            {
+                con.CloseConnection();
+                con.Dispose();
+            }
+            return model;
+        }
+        public List<PatientBillDetails> GetServiceDetails(List<PatientBillDetails> lst, PatientBillDetails model, clsSession cSession, out string ReturnMessage)
+        {
+            DBConnect con = new DBConnect();
+            try
+            {
+                int RowID = 0;
+                using (SqlCommand cmd = new SqlCommand())
+                {
+                    cmd.CommandType = CommandType.StoredProcedure;
+                    cmd.CommandText = "usp_BMS_Transactions_PatientBillDetails_GetServiceCharges";
+                    cmd.Parameters.AddWithValue("@ServiceInvoiceID", model.ServiceInvoiceID);
+                    //cmd.Parameters.AddWithValue("@LoginID", cSession.UID);
+                    cmd.Parameters.AddWithValue("@CompanyID", cSession.CompanyID);
+                    con.OpenConnection();
+                    cmd.Connection = con.Connection;
+                    using (SqlDataReader dr = cmd.ExecuteReader())
+                    {
+                        while (dr.Read())
+                        {
+                            lst.Add(new PatientBillDetails
+                            {
+                                RowID = ++RowID,
+                                //SalesOrderDetailID = Convert.ToInt32(dr["SalesOrderDetailID"]),
+                                ServiceInvoiceID = Convert.ToInt32(dr["ServiceInvoiceID"]),
+                                ServiceRateID = Convert.ToInt32(dr["ServiceRateID"]),
+                                ServiceDetailID = Convert.ToInt32(dr["ServiceDetailID"]),
+                                ServiceDate = Convert.ToString(dr["ServiceDate"]),
+                                ServiceName = Convert.ToString(dr["ServiceName"]),
+                                ServiceUnit = Convert.ToDecimal(dr["ServiceUnit"]),
+                                ServiceRatePerUnit = Convert.ToDecimal(dr["ServiceRatePerUnit"]),
+                                ServiceDiscountAmount = Convert.ToDecimal(dr["ServiceDiscountAmount"]),
+                                ServiceAmount = Convert.ToDecimal(dr["ServiceAmount"]),
+                                CashDiscountAmount = Convert.ToDecimal(dr["CashDiscountAmount"]),
+                                ServiceAmountAfterDiscount = Convert.ToDecimal(dr["ServiceAmountAfterDiscount"]),
+
+                                
+                            });
+                        }
+                    }
+                    ReturnMessage = "Success";
+                }
+            }
+            catch (SqlException ex)
+            {
+                ReturnMessage = Convert.ToString(ex.Message);
+                using (clsLog mLog = new clsLog())
+                {
+                    mLog.AddToLog_Error(cSession.SessionLogID, ReturnMessage, "BMS_PatientBillDetailsDAO", "GetServiceDetails");
+                }
+            }
+            catch (Exception ex)
+            {
+                ReturnMessage = Convert.ToString(ex.Message);
+                using (clsLog mLog = new clsLog())
+                {
+                    mLog.AddToLog_Error(cSession.SessionLogID, ReturnMessage, "BMS_PatientBillDetailsDAO", "GetServiceDetails");
+                }
+            }
+            finally
+            {
+                con.CloseConnection();
+                con.Dispose();
+            }
+            return lst;
+        }
+      
+        public clsReturnMessage DeletePatientService(int? ServiceAvailID, clsSession cSession, clsReturnMessage cMsg)
+        {
+            DBConnect con = new DBConnect();
+            SqlTransaction ObjTran = null;
+
+            int RetryCounter = 3;
+            do
+            {
+                try
+                {
+                    using (SqlCommand cmd = new SqlCommand())
+                    {
+                        cmd.CommandType = CommandType.StoredProcedure;
+                        cmd.CommandText = "usp_BMS_Transactions_PatientBillDetails_DeletePatientService";
+                        cmd.Parameters.AddWithValue("@ServiceAvailID", ServiceAvailID);
+                        cmd.Parameters.AddWithValue("@LoginID", cSession.UID);
+                        cmd.Parameters.AddWithValue("@CompanyID", cSession.CompanyID);
+                        con.OpenConnection();
+                        cmd.Connection = con.Connection;
+                        ObjTran = con.BeginTransaction();
+                        cmd.Transaction = ObjTran;
+                        cmd.ExecuteNonQuery();
+                        ObjTran.Commit();
+                        RetryCounter = 0;
+                        cMsg.ReturnMessage = "Deleted";
+                    }
+                }
+                catch (SqlException ex)
+                {
+                    ObjTran.Rollback();
+                    if ((ex.Number == 1205 || ex.Number == 2627) && (RetryCounter > 1))
+                    {
+                        RetryCounter = RetryCounter - 1;
+                        Thread.Sleep(500);
+                    }
+                    else
+                    {
+                        RetryCounter = 0;
+                        cMsg.ReturnMessage = Convert.ToString(ex.Message);
+                        using (clsLog mLog = new clsLog())
+                        {
+                            mLog.AddToLog_Error(cSession.SessionLogID, cMsg.ReturnMessage, "BMS_PatientBillDetailsDAO", "DeletePatientService");
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    ObjTran.Rollback();
+                    RetryCounter = 0;
+                    cMsg.ReturnMessage = Convert.ToString(ex.Message);
+                    using (clsLog mLog = new clsLog())
+                    {
+                        mLog.AddToLog_Error(cSession.SessionLogID, cMsg.ReturnMessage, "BMS_PatientBillDetailsDAO", "DeletePatientService");
+                    }
+                }
+                finally
+                {
+                    if (ObjTran != null)
+                    {
+                        ObjTran.Dispose();
+                    }
+                    con.CloseConnection();
+                    con.Dispose();
+                }
+            } while (RetryCounter > 0);
+            return cMsg;
+        }
+        public clsReturnMessage SaveRecord(PatientBillDetails model, clsSession cSession, clsReturnMessage cMsg)
+        {
+            DBConnect con = new DBConnect();
+            SqlTransaction ObjTran = null;
+            //SqlParameter nServiceInvoiceID = new SqlParameter();
+            //SqlParameter nServiceInvoiceNo = new SqlParameter();
+            //SqlParameter nBookingID = new SqlParameter();
+            //SqlParameter nDocumentID = new SqlParameter();
+            //SqlParameter nReturnMessage = new SqlParameter();
+            //SqlParameter nFilePath = new SqlParameter();
+
+            int RetryCounter = 3;
+            do
+            {
+                try
+                {
+                    for (int i = 0; i <= model.lstServiceDetail.Count - 1; i++)
+                    {
+                        using (SqlCommand cmdItem = new SqlCommand())
+                        {
+                            cmdItem.CommandType = CommandType.StoredProcedure;
+                            cmdItem.CommandText = "usp_BMS_Transactions_Billing_AddDetail";
+                            //cmdItem.Parameters.AddWithValue("@ServiceInvoiceID", ServiceInvoiceID);
+                            //cmdItem.Parameters.AddWithValue("@BookingID", BookingID);
+                            cmdItem.Parameters.AddWithValue("@BillingSection", model.BillingSection);
+                            //cmdItem.Parameters.AddWithValue("@ServiceInvoiceDate", model.dtServiceInvoiceDate);
+                            cmdItem.Parameters.AddWithValue("@RegistrationID", DBNull.Value);
+                            cmdItem.Parameters.AddWithValue("@PatientName", model.PatientName.Trim().ToUpper());
+                            if (string.IsNullOrEmpty(model.AgeSex))
+                            {
+                                cmdItem.Parameters.AddWithValue("@AgeSex", DBNull.Value);
+                            }
+                            else
+                            {
+                                cmdItem.Parameters.AddWithValue("@AgeSex", model.AgeSex.Trim().ToUpper());
+                            }
+                            cmdItem.Parameters.AddWithValue("@Sex", model.Sex.Trim().ToUpper());
+                            cmdItem.Parameters.AddWithValue("@Age", Convert.ToString(model.Age).Trim());
+                            cmdItem.Parameters.AddWithValue("@AgeVal", model.AgeVal.Trim().ToUpper());
+                            cmdItem.Parameters.AddWithValue("@ServiceAvailID", DBNull.Value);
+                            if (model.lstServiceDetail[i].ConsultantID.HasValue)
+                            {
+                                cmdItem.Parameters.AddWithValue("@ConsultantID", model.lstServiceDetail[i].ConsultantID);
+                            }
+                            else
+                            {
+                                cmdItem.Parameters.AddWithValue("@ConsultantID", DBNull.Value);
+                            }
+                           
+                            cmdItem.Parameters.AddWithValue("@ServiceDetailID", model.lstServiceDetail[i].ServiceDetailID);
+                            cmdItem.Parameters.AddWithValue("@ServiceType", model.lstServiceDetail[i].ServiceType);
+                            cmdItem.Parameters.AddWithValue("@ServiceID", model.lstServiceDetail[i].ServiceID);
+                            cmdItem.Parameters.AddWithValue("@ServiceName", model.lstServiceDetail[i].ServiceName.Trim());
+                            cmdItem.Parameters.AddWithValue("@ServiceUnit", model.lstServiceDetail[i].ServiceUnit);
+                            cmdItem.Parameters.AddWithValue("@ServiceRatePerUnit", model.lstServiceDetail[i].ServiceRatePerUnit);
+                            cmdItem.Parameters.AddWithValue("@ServiceDiscountAmount", model.lstServiceDetail[i].ServiceDiscountAmount);
+                            cmdItem.Parameters.AddWithValue("@ServiceAmount", model.lstServiceDetail[i].ServiceAmount);
+                            cmdItem.Parameters.AddWithValue("@CashDiscountAmount", model.lstServiceDetail[i].CashDiscountAmount);
+                            cmdItem.Parameters.AddWithValue("@DiscountPercent", model.DiscountPercent);
+                            
+                            if (!model.lstServiceDetail[i].ServiceRateID.HasValue)
+                            {
+                                cmdItem.Parameters.AddWithValue("@ServiceRateID", DBNull.Value);
+                            }
+                            else
+                            {
+                                cmdItem.Parameters.AddWithValue("@ServiceRateID", model.lstServiceDetail[i].ServiceRateID);
+                            }
+                            cmdItem.Parameters.AddWithValue("@LoginID", cSession.UID);
+                            cmdItem.Parameters.AddWithValue("@CompanyID", cSession.CompanyID);
+                            con.OpenConnection();
+                            cmdItem.Connection = con.Connection;
+                            cmdItem.Transaction = ObjTran;
+                            cmdItem.ExecuteNonQuery();
+                        }
+                        //Commit Transaction
+                        if (cMsg.ReturnMessage == "Saved")
+                        {
+                            ObjTran.Commit();
+                            RetryCounter = 0;
+
+                            //cMsg.ReturnPKID = ServiceInvoiceID;
+                            //cMsg.ReturnCode = ServiceInvoiceNo;
+                            //cMsg.ReturnFilePath = FilePath;
+
+
+                        }
+                        else
+                        {
+                            ObjTran.Rollback();
+                            RetryCounter = 0;
+                        }
+                    }
+                 
+                }
+                catch (SqlException ex)
+                {
+                    if (ObjTran != null)
+                    {
+                        ObjTran.Rollback();
+                    }
+
+                    if ((ex.Number == 1205 || ex.Number == 2627) && (RetryCounter > 1))
+                    {
+                        RetryCounter = RetryCounter - 1;
+                        Thread.Sleep(500);
+                    }
+                    else
+                    {
+                        RetryCounter = 0;
+                        using (clsLog mLog = new clsLog())
+                        {
+                            mLog.AddToLog_Error(cSession.SessionLogID, Convert.ToString(ex.Message), "BMS_BillingDAO", "SaveRecord");
+                        }
+                        cMsg.ReturnMessage = Convert.ToString(ex.Message);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    if (ObjTran != null)
+                    {
+                        ObjTran.Rollback();
+                    }
+
+                    RetryCounter = 0;
+                    using (clsLog mLog = new clsLog())
+                    {
+                        mLog.AddToLog_Error(cSession.SessionLogID, Convert.ToString(ex.Message), "BMS_BillingDAO", "SaveRecord");
+                    }
+                    cMsg.ReturnMessage = Convert.ToString(ex.Message);
+                }
+                finally
+                {
+                    if (ObjTran != null)
+                    {
+                        ObjTran.Dispose();
+                    }
+                    con.CloseConnection();
+                    con.Dispose();
+                }
+            } while (RetryCounter > 0);
+            return cMsg;
+        }
+
+        public clsReturnMessage CancelRecord(int? ServiceInvoiceID, string CancellationReason, clsSession cSession, clsReturnMessage cMsg)
+        {
+            DBConnect con = new DBConnect();
+            SqlTransaction ObjTran = null;
+            SqlParameter nReturnMessage = new SqlParameter();
+
+            int RetryCounter = 3;
+            do
+            {
+                try
+                {
+                    using (SqlCommand cmd = new SqlCommand())
+                    {
+                        cmd.CommandType = CommandType.StoredProcedure;
+                        cmd.CommandText = "usp_BMS_Transactions_PatientBillDetails_Cancel";
+                        cmd.Parameters.AddWithValue("@ServiceInvoiceID", ServiceInvoiceID);
+                        cmd.Parameters.AddWithValue("@CancellationReason", CancellationReason.ToUpper().Trim());
+                        cmd.Parameters.AddWithValue("@SessionLogID", cSession.SessionLogID);
+                        cmd.Parameters.AddWithValue("@LoginID", cSession.UID);
+                        cmd.Parameters.AddWithValue("@CompanyID", cSession.CompanyID);
+                        nReturnMessage = cmd.Parameters.Add("@ReturnMessage", SqlDbType.VarChar, 100);
+                        nReturnMessage.Direction = ParameterDirection.Output;
+                        con.OpenConnection();
+                        cmd.Connection = con.Connection;
+                        ObjTran = con.BeginTransaction();
+                        cmd.Transaction = ObjTran;
+                        cmd.ExecuteNonQuery();
+                        RetryCounter = 0;
+                        cMsg.ReturnMessage = Convert.ToString(nReturnMessage.Value);
+
+                        if (cMsg.ReturnMessage == "Cancelled")
+                        {
+                            ObjTran.Commit();
+                        }
+                        else
+                        {
+                            ObjTran.Rollback();
+                        }
+                    }
+                }
+                catch (SqlException ex)
+                {
+                    if (ObjTran != null)
+                    {
+                        ObjTran.Rollback();
+                    }
+
+                    if ((ex.Number == 1205 || ex.Number == 2627) && (RetryCounter > 1))
+                    {
+                        RetryCounter = RetryCounter - 1;
+                        Thread.Sleep(500);
+                    }
+                    else
+                    {
+                        RetryCounter = 0;
+                        using (clsLog mLog = new clsLog())
+                        {
+                            mLog.AddToLog_Error(cSession.SessionLogID, Convert.ToString(ex.Message), "BMS_PatientBillDetailsDAO", "CancelRecord");
+                        }
+                        cMsg.ReturnMessage = Convert.ToString(ex.Message);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    if (ObjTran != null)
+                    {
+                        ObjTran.Rollback();
+                    }
+
+                    RetryCounter = 0;
+                    using (clsLog mLog = new clsLog())
+                    {
+                        mLog.AddToLog_Error(cSession.SessionLogID, Convert.ToString(ex.Message), "BMS_PatientBillDetailsDAO", "CancelRecord");
+                    }
+                    cMsg.ReturnMessage = Convert.ToString(ex.Message);
+                }
+                finally
+                {
+                    if (ObjTran != null)
+                    {
+                        ObjTran.Dispose();
+                    }
+                    con.CloseConnection();
+                    con.Dispose();
+                }
+            } while (RetryCounter > 0);
+            return cMsg;
+        }
+
+        public PatientBillDetails GetSettings(PatientBillDetails model, clsSession cSession)
+        {
+            DBConnect con = new DBConnect();
+            try
+            {
+                using (SqlCommand cmd = new SqlCommand())
+                {
+                    cmd.CommandType = CommandType.StoredProcedure;
+                    cmd.CommandText = "usp_BMS_Transactions_PatientBillDetails_GetSettings";
+                    cmd.Parameters.AddWithValue("@CompanyID", cSession.CompanyID);
+                    con.OpenConnection();
+                    cmd.Connection = con.Connection;
+                    using (SqlDataReader sdr = cmd.ExecuteReader())
+                    {
+                        while (sdr.Read())
+                        {
+                            //model.IsPatientBillDetailsDateEditable = Convert.ToBoolean(sdr["IsPatientBillDetailsDateEditable"]);
+                            //model.DaysAllowedToOPForPatientBillDetails = Convert.ToInt32(sdr["DaysAllowedToOPForPatientBillDetails"]);
+                            //model.DaysAllowedToIPForPatientBillDetails = Convert.ToInt32(sdr["DaysAllowedToIPForPatientBillDetails"]);
+                            //model.IsOPBillAllowedForIP = Convert.ToBoolean(sdr["IsOPBillAllowedForIP"]);
+                            //model.IsIPBillAllowedWithoutDischarge = Convert.ToBoolean(sdr["IsIPBillAllowedWithoutDischarge"]);
+                            //model.IsAllowedPatientBillDetailsForIPMainBill = Convert.ToBoolean(sdr["IsAllowedPatientBillDetailsForIPMainBill"]);
+                            //model.IsChargesSplitUpEditable = Convert.ToBoolean(sdr["IsChargesSplitUpEditable"]);
+                            //model.IsAllowedCreditBill = Convert.ToBoolean(sdr["IsAllowedCreditBill"]);
+                            //model.IsAllowedFreeBill = Convert.ToBoolean(sdr["IsAllowedFreeBill"]);
+                        }
+                    }
+                }
+            }
+            catch (SqlException ex)
+            {
+                using (clsLog mLog = new clsLog())
+                {
+                    mLog.AddToLog_Error(cSession.SessionLogID, Convert.ToString(ex.Message), "BMS_PatientBillDetailsDAO", "GetSettings");
+                }
+            }
+            catch (Exception ex)
+            {
+                using (clsLog mLog = new clsLog())
+                {
+                    mLog.AddToLog_Error(cSession.SessionLogID, Convert.ToString(ex.Message), "BMS_PatientBillDetailsDAO", "GetSettings");
+                }
+            }
+            finally
+            {
+                con.CloseConnection();
+                con.Dispose();
+            }
+            return model;
+        }
+
+        public PrintHTML PrintBill(PrintHTML model, string ServiceInvoiceNo, clsSession cSession)
+        {
+            DBConnect con = new DBConnect();
+            try
+            {
+                using (SqlCommand cmd = new SqlCommand())
+                {
+                    cmd.CommandType = CommandType.StoredProcedure;
+                    cmd.CommandText = "usp_BMS_Transactions_PatientBillDetails_PrintBill";
+                    cmd.Parameters.AddWithValue("@ServiceInvoiceNo", ServiceInvoiceNo);
+                    cmd.Parameters.AddWithValue("@LoginID", cSession.UID);
+                    cmd.Parameters.AddWithValue("@CompanyID", cSession.CompanyID);
+                    con.OpenConnection();
+                    cmd.Connection = con.Connection;
+                    cmd.CommandTimeout = 60;
+                    using (SqlDataReader dr = cmd.ExecuteReader())
+                    {
+                        while (dr.Read())
+                        {
+                            model.PageSize = Convert.ToString(dr["PageSize"]);
+                            model.PageOrientation = Convert.ToString(dr["PageOrientation"]);
+                            model.PageCSS = Convert.ToString(dr["PageCSS"]);
+                            model.PrintActionType = Convert.ToInt32(dr["PrintActionType"]);
+                            model.HeaderType = Convert.ToInt32(dr["HeaderType"]);
+                            model.HeaderSectionHeight = Convert.ToString(dr["HeaderSectionHeight"]);
+                            model.HeaderLogoHeight = Convert.ToString(dr["HeaderLogoHeight"]);
+                            model.HeaderLogoWidth = Convert.ToString(dr["HeaderLogoWidth"]);
+                            model.ReportDetailHeight = Convert.ToInt32(dr["ReportDetailHeight"]);
+                            model.FooterType = Convert.ToInt32(dr["FooterType"]);
+                            model.CanPrintPoweredBy = Convert.ToBoolean(dr["CanPrintPoweredBy"]);
+                            model.CanPrintPageNo = Convert.ToBoolean(dr["CanPrintPageNo"]);
+
+                            model.HospitalHeaderContent = Convert.ToString(dr["HospitalHeaderContent"]);
+                            model.HospitalLogoImagePath = Convert.ToString(dr["HospitalLogoImagePath"]);
+                            model.HospitalPoweredBy = Convert.ToString(dr["HospitalPoweredBy"]);
+
+                            model.ReportHeaderContent = Convert.ToString(dr["ReportHeaderContent"]);
+                            model.ReportDetailContent = Convert.ToString(dr["ReportDetailContent"]);
+                            model.ReportFooterContent = Convert.ToString(dr["ReportFooterContent"]);
+                        }
+                    }
+                }
+            }
+            catch (SqlException ex)
+            {
+                using (clsLog mLog = new clsLog())
+                {
+                    mLog.AddToLog_Error(cSession.SessionLogID, Convert.ToString(ex.Message), "BMS_PatientBillDetailsDAO", "PrintBill");
+                }
+            }
+            catch (Exception ex)
+            {
+                using (clsLog mLog = new clsLog())
+                {
+                    mLog.AddToLog_Error(cSession.SessionLogID, Convert.ToString(ex.Message), "BMS_PatientBillDetailsDAO", "PrintBill");
+                }
+            }
+            finally
+            {
+                con.CloseConnection();
+                con.Dispose();
+            }
+            return model;
+        }
+
+    }
+}
+
+--====================================================================================================================================================================
+
+
+

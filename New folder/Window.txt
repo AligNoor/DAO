@@ -1,0 +1,13 @@
+-------------------------------Close all open forms except the main menu in C#--------------------
+
+
+List<Form> openForms = new List<Form>();
+
+foreach (Form f in Application.OpenForms)
+    openForms.Add(f);
+
+foreach (Form f in openForms)
+{
+    if (f.Name != "Menu")
+        f.Close();
+}

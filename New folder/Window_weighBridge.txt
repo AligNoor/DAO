@@ -1,0 +1,70 @@
+ TextBox[] newTextBox = { txtVehicleNo, txtTareWeight, txtDriverName, txtMobile, txtCustomer };
+                    for (int inti = 0; inti < newTextBox.Length; inti++)
+                    {
+                        if (newTextBox[inti].Text == string.Empty)
+                        {
+                            errorProvider1.SetError(newTextBox[inti], "Please fill the required field");
+                            newTextBox[inti].Focus();
+                            return;
+                        }
+                    }
+
+---------------------------------------------------------------------------------
+ void FillCombo()
+        {
+
+            SqlDataAdapter sqlDa = new SqlDataAdapter("Select VehicleTypeID,VehicleTypeName FROM WB_VehicleTypeMaster", sqlcon);
+            DataTable dtbl = new DataTable();
+            sqlDa.Fill(dtbl);
+            foreach (DataRow dr in dtbl.Rows)
+            {
+                cBoxVehicleType.Items.Add(dr["VehicleTypeName"].ToString());
+
+
+            }
+
+        }
+---------------------------------------------------------------------------------------------------------------------
+   void TypeboxData()
+        {
+
+            try
+            {
+                SqlParameter nReturnMessage = new SqlParameter();
+                if (sqlcon.State == ConnectionState.Closed)
+                    sqlcon.Open();
+
+                SqlDataAdapter da = new SqlDataAdapter("select * from Common_SelectList where AreaName ='WB' and ControllerName='VehicleMaster' and IsActive=1", sqlcon);
+                DataTable dt = new DataTable();
+                DataRow row;
+                da.Fill(dt);
+
+                row = dt.NewRow();
+                row.ItemArray = new object[] { 0, "--Select Vehicle Type --" };
+                dt.Rows.InsertAt(row, 0);
+
+                cBoxType.ValueMember = "iValue";
+                cBoxType.DisplayMember = "TextValue";
+                cBoxType.DataSource = dt;
+
+
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message, "Error Message");
+            }
+            finally
+            {
+                sqlcon.Close();
+            }
+
+
+
+        }
+
+
+^[A-Z]{2}\s[0-9]{1,2}(?: [A-Z])?(?: [A-Z]*)? [0-9]{4}$
+
+^[A-Z]{2}\s[0-9]{2}\s[A-Z]{2}\s[0-9]{4}$
+
+^[A-Z]{2}\s?([0-9]{1,2}|([A-Z]{0,1}))?\s?[A-Z]{1,3}\s?[0-9]{4}$
